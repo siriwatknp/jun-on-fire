@@ -1,0 +1,7 @@
+---
+description: Rules for building user interface for this web app
+globs: 
+alwaysApply: true
+---
+- Use [Shadcn UI](mdc:https:/ui.shadcn.com/docs/installation) components by pulling from `npx shadcn@latest add <component>`.
+- Look for icon from [Lucide React](mdc:https:/lucide.dev/icons) first, but create a custom svg if there is no match.

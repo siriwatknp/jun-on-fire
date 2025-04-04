@@ -1,0 +1,9 @@
+---
+description: Rules for writing TypeScript
+globs: 
+alwaysApply: false
+---
+- When importing types from libraries, always use `import type { ... } from 'lib'`.
+- Prefer `interface` over `type` if possible for component props
+- For props spread to the root element, include `JSX.intrinsicElement` of the root element too.
+- Write the description/purpose above each field of the type. 
