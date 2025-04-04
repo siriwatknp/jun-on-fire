@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { PlusCircle, Trash2, Play } from "lucide-react";
+import { PlusCircle, Trash2, Play, RotateCcw } from "lucide-react";
 import {
   collection,
   collectionGroup,
@@ -176,6 +176,42 @@ export function QueryBuilder() {
     }));
   };
 
+  // Check if any option is enabled
+  const hasEnabledOptions = () => {
+    return (
+      queryOptions.where.enabled ||
+      queryOptions.orderBy.enabled ||
+      queryOptions.limit.enabled ||
+      queryOptions.sum.enabled ||
+      queryOptions.count.enabled
+    );
+  };
+
+  // Reset all options to default state
+  const resetOptions = () => {
+    setQueryOptions({
+      where: {
+        enabled: false,
+        clauses: [{ field: "", operator: "==", value: "" }],
+      },
+      orderBy: {
+        enabled: false,
+        clause: { field: "", direction: "asc" },
+      },
+      limit: {
+        enabled: false,
+        value: "",
+      },
+      sum: {
+        enabled: false,
+        field: "",
+      },
+      count: {
+        enabled: false,
+      },
+    });
+  };
+
   // Function to build and execute the Firestore query
   const executeQuery = async () => {
     setIsLoading(true);
@@ -310,23 +346,25 @@ export function QueryBuilder() {
 
   return (
     <div className="space-y-6 p-4 bg-white rounded-lg shadow-sm">
-      <div className="flex justify-between items-center">
-        <div className="space-y-1">
-          <h2 className="text-xl font-semibold">Query Builder</h2>
-          <p className="text-sm text-gray-500">
-            Build and execute Firestore queries
-          </p>
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold">Query Builder</h2>
+            <p className="text-sm text-gray-500">
+              Build and execute Firestore queries
+            </p>
+          </div>
+          <Button
+            size="icon"
+            className="h-9 w-9 rounded-full"
+            title="Execute Query"
+            onClick={executeQuery}
+            disabled={isLoading}
+          >
+            <Play className={`h-4 w-4 ${isLoading ? "opacity-50" : ""}`} />
+            <span className="sr-only">Execute Query</span>
+          </Button>
         </div>
-        <Button
-          size="icon"
-          className="h-9 w-9 rounded-full"
-          title="Execute Query"
-          onClick={executeQuery}
-          disabled={isLoading}
-        >
-          <Play className={`h-4 w-4 ${isLoading ? "opacity-50" : ""}`} />
-          <span className="sr-only">Execute Query</span>
-        </Button>
       </div>
 
       <div className="space-y-4">
@@ -365,7 +403,20 @@ export function QueryBuilder() {
 
         {/* Query Options */}
         <div className="space-y-4">
-          <h3 className="font-medium">Query Options</h3>
+          <div className="flex gap-2 items-baseline">
+            <h3 className="font-medium">Query Options</h3>
+            {hasEnabledOptions() && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetOptions}
+                className="flex h-6 px-2 text-xs items-center gap-1 text-gray-500 hover:text-gray-700"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset
+              </Button>
+            )}
+          </div>
 
           {/* Where Clause */}
           <div className="space-y-2">
