@@ -346,27 +346,6 @@ export function QueryBuilder() {
 
   return (
     <div className="space-y-6 p-4 bg-white rounded-lg shadow-sm">
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold">Query Builder</h2>
-            <p className="text-sm text-gray-500">
-              Build and execute Firestore queries
-            </p>
-          </div>
-          <Button
-            size="icon"
-            className="h-9 w-9 rounded-full"
-            title="Execute Query"
-            onClick={executeQuery}
-            disabled={isLoading}
-          >
-            <Play className={`h-4 w-4 ${isLoading ? "opacity-50" : ""}`} />
-            <span className="sr-only">Execute Query</span>
-          </Button>
-        </div>
-      </div>
-
       <div className="space-y-4">
         {/* Query Type Selection */}
         <div className="space-y-2">
@@ -629,6 +608,20 @@ export function QueryBuilder() {
             />
             <Label htmlFor="count-option">Count</Label>
           </div>
+        </div>
+
+        {/* Execute Query Button - now below all options */}
+        <div className="mt-6">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={executeQuery}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            <Play className={`h-4 w-4 ${isLoading ? "opacity-50" : ""}`} />
+            Execute Query
+          </Button>
         </div>
       </div>
 

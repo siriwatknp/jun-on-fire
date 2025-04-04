@@ -16,3 +16,8 @@ A replicate of Firestore console but better experience.
 ### State management
 
 Store queries as tree in a state, then travese the tree to transform into Firestore query call.
+
+## Saved queries management
+
+- User can create new query, the query will be saved as draft.
+- Queries always saved when clicking "run query" and the result is shown (result also saved along the query)
