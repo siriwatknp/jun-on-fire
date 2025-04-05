@@ -243,6 +243,21 @@ export default function Dashboard() {
         queryToExecute.aggregation.average.enabled;
 
       if (isAggregationQuery) {
+        // Validate field inputs for sum and average
+        if (
+          queryToExecute.aggregation.sum.enabled &&
+          !queryToExecute.aggregation.sum.field
+        ) {
+          throw new Error("A field must be specified for sum aggregation");
+        }
+
+        if (
+          queryToExecute.aggregation.average.enabled &&
+          !queryToExecute.aggregation.average.field
+        ) {
+          throw new Error("A field must be specified for average aggregation");
+        }
+
         // Build the base query with all constraints
         const constrainedQuery = query(baseQuery, ...constraints);
 
@@ -257,17 +272,11 @@ export default function Dashboard() {
           aggregateSpec.count = count();
         }
 
-        if (
-          queryToExecute.aggregation.sum.enabled &&
-          queryToExecute.aggregation.sum.field
-        ) {
+        if (queryToExecute.aggregation.sum.enabled) {
           aggregateSpec.sum = sum(queryToExecute.aggregation.sum.field);
         }
 
-        if (
-          queryToExecute.aggregation.average.enabled &&
-          queryToExecute.aggregation.average.field
-        ) {
+        if (queryToExecute.aggregation.average.enabled) {
           aggregateSpec.average = average(
             queryToExecute.aggregation.average.field
           );
