@@ -1,0 +1,122 @@
+// Query Type Options
+export type QueryType = "collection" | "collectionGroup";
+
+// Query Operators
+export type WhereOperator =
+  | "=="
+  | "!="
+  | "<"
+  | "<="
+  | ">"
+  | ">="
+  | "array-contains"
+  | "array-contains-any"
+  | "in"
+  | "not-in";
+
+// Order Direction
+export type OrderDirection = "asc" | "desc";
+
+// Where Clause
+export interface WhereClause {
+  field: string;
+  operator: WhereOperator;
+  value: string;
+}
+
+// Define the unified query state schema
+export interface QueryState {
+  // Metadata
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+
+  // Source configuration
+  source: {
+    type: QueryType;
+    path: string;
+  };
+
+  // Query constraints
+  constraints: {
+    where: {
+      enabled: boolean;
+      clauses: WhereClause[];
+    };
+
+    orderBy: {
+      enabled: boolean;
+      field: string;
+      direction: OrderDirection;
+    };
+
+    limit: {
+      enabled: boolean;
+      value: number | null;
+    };
+  };
+
+  // Aggregations
+  aggregation: {
+    count: {
+      enabled: boolean;
+    };
+    sum: {
+      enabled: boolean;
+      field: string;
+    };
+    average: {
+      enabled: boolean;
+      field: string;
+    };
+  };
+}
+
+// Props for the QueryForm component
+export interface QueryFormProps {
+  query: QueryState;
+  onChange: (updatedQuery: QueryState) => void;
+  onExecute: (query: QueryState) => void;
+  isLoading?: boolean;
+}
+
+// Helper function to create a default query state
+export const createDefaultQuery = (): QueryState => ({
+  id: `query-${Date.now()}`,
+  title: "New Query",
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  source: {
+    type: "collection",
+    path: "",
+  },
+  constraints: {
+    where: {
+      enabled: false,
+      clauses: [{ field: "", operator: "==", value: "" }],
+    },
+    orderBy: {
+      enabled: false,
+      field: "",
+      direction: "asc",
+    },
+    limit: {
+      enabled: false,
+      value: null,
+    },
+  },
+  aggregation: {
+    count: {
+      enabled: false,
+    },
+    sum: {
+      enabled: false,
+      field: "",
+    },
+    average: {
+      enabled: false,
+      field: "",
+    },
+  },
+});
