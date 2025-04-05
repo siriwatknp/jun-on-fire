@@ -1,7 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Save, FileText, Trash2, PlusCircle } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Save,
+  FileText,
+  Trash2,
+  PlusCircle,
+  Pencil,
+  Check,
+} from "lucide-react";
 import {
   collection,
   collectionGroup,
@@ -61,6 +68,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<DocumentData[] | null>(null);
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Saved queries management
   const [savedQueries, setSavedQueries] = useState<QueryState[]>([]);
@@ -140,6 +150,16 @@ export default function Dashboard() {
     const updatedQueries = [...savedQueries, newDraftQuery];
     setSavedQueries(updatedQueries);
     setActiveQueryId(newDraftQuery.id);
+
+    // Enter title edit mode for new queries
+    setEditedTitle(newDraftQuery.title);
+    setIsTitleEditing(true);
+    setTimeout(() => {
+      if (titleInputRef.current) {
+        titleInputRef.current.focus();
+        titleInputRef.current.select();
+      }
+    }, 0);
   };
 
   // Save the current query
@@ -167,6 +187,7 @@ export default function Dashboard() {
     setError(null);
     setResults(null);
     setActiveQueryId(query.id);
+    setIsTitleEditing(false); // Cancel any ongoing title editing
   };
 
   // Delete a saved query
@@ -186,6 +207,43 @@ export default function Dashboard() {
   // Handle query form changes
   const handleQueryChange = (updatedQuery: QueryState) => {
     setCurrentQuery(updatedQuery);
+  };
+
+  // Handle title editing
+  const startTitleEdit = () => {
+    if (!activeQueryId) return;
+    setEditedTitle(currentQuery.title);
+    setIsTitleEditing(true);
+    // Focus and select text in the next render cycle
+    setTimeout(() => {
+      if (titleInputRef.current) {
+        titleInputRef.current.focus();
+        titleInputRef.current.select();
+      }
+    }, 0);
+  };
+
+  const saveTitleEdit = () => {
+    if (!activeQueryId || !editedTitle.trim()) return;
+
+    // Update the current query
+    const updatedQuery = { ...currentQuery, title: editedTitle.trim() };
+    setCurrentQuery(updatedQuery);
+
+    // Update in saved queries list
+    const updatedQueries = savedQueries.map((query) =>
+      query.id === activeQueryId
+        ? { ...query, title: editedTitle.trim() }
+        : query
+    );
+    setSavedQueries(updatedQueries);
+
+    // Exit edit mode
+    setIsTitleEditing(false);
+  };
+
+  const cancelTitleEdit = () => {
+    setIsTitleEditing(false);
   };
 
   // Function to build and execute the Firestore query
@@ -453,8 +511,46 @@ export default function Dashboard() {
           <div className="flex-1 overflow-auto p-4">
             {activeQueryId ? (
               <div className="flex flex-col gap-4">
-                {/* Save button */}
-                <div className="flex justify-end">
+                {/* Title and Save button row */}
+                <div className="flex justify-between items-center">
+                  {/* Editable Title */}
+                  {isTitleEditing ? (
+                    <div className="flex items-center gap-2 flex-1 mr-4">
+                      <Pencil className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                      <div className="flex-1 flex items-center">
+                        <input
+                          ref={titleInputRef}
+                          type="text"
+                          value={editedTitle}
+                          onChange={(e) => setEditedTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveTitleEdit();
+                            if (e.key === "Escape") cancelTitleEdit();
+                          }}
+                          className="flex-1 px-2 py-1 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={saveTitleEdit}
+                          className="rounded-l-none h-[34px]"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={startTitleEdit}
+                      className="flex items-center gap-2 cursor-pointer group"
+                    >
+                      <Pencil className="h-4 w-4 text-gray-500" />
+                      <h2 className="text-lg font-medium group-hover:underline">
+                        {currentQuery.title}
+                      </h2>
+                    </div>
+                  )}
+
+                  {/* Save button */}
                   <Button
                     variant="outline"
                     size="sm"

@@ -175,19 +175,7 @@ export function QueryForm({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      {/* Query title input */}
-      <div className="flex gap-2 items-center mb-6">
-        <Input
-          value={query.title}
-          onChange={(e) =>
-            updateQuery((q) => ({ ...q, title: e.target.value }))
-          }
-          className="h-10 text-base"
-          placeholder="Query Title"
-        />
-      </div>
-
+    <div className="bg-white rounded-lg p-6">
       <div className="space-y-6">
         <div className="space-y-4">
           <Label className="text-sm/[1.5rem] font-medium block">
