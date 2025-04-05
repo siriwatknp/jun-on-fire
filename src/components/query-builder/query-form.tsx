@@ -119,30 +119,52 @@ export function QueryForm({
 
   // Delete where clause
   const deleteWhereClause = (index: number) => {
-    updateQuery((q) => ({
-      ...q,
-      constraints: {
-        ...q.constraints,
-        where: {
-          ...q.constraints.where,
-          clauses: q.constraints.where.clauses.filter((_, i) => i !== index),
+    updateQuery((q) => {
+      // Don't allow deleting the last clause
+      if (q.constraints.where.clauses.length <= 1) {
+        return q;
+      }
+
+      return {
+        ...q,
+        constraints: {
+          ...q.constraints,
+          where: {
+            ...q.constraints.where,
+            clauses: q.constraints.where.clauses.filter((_, i) => i !== index),
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   // Toggle a constraint option
   const toggleConstraint = (constraintKey: keyof typeof query.constraints) => {
-    updateQuery((q) => ({
-      ...q,
-      constraints: {
-        ...q.constraints,
-        [constraintKey]: {
-          ...q.constraints[constraintKey],
-          enabled: !q.constraints[constraintKey].enabled,
+    updateQuery((q) => {
+      const newState = {
+        ...q,
+        constraints: {
+          ...q.constraints,
+          [constraintKey]: {
+            ...q.constraints[constraintKey],
+            enabled: !q.constraints[constraintKey].enabled,
+          },
         },
-      },
-    }));
+      };
+
+      // Initialize with at least one empty where clause when enabling
+      if (
+        constraintKey === "where" &&
+        !q.constraints[constraintKey].enabled &&
+        q.constraints[constraintKey].clauses.length === 0
+      ) {
+        newState.constraints[constraintKey].clauses = [
+          { field: "", operator: "==", value: "", valueType: "string" },
+        ];
+      }
+
+      return newState;
+    });
   };
 
   // Add a field to sum aggregation
@@ -473,7 +495,7 @@ export function QueryForm({
                             <SelectItem value="null">null</SelectItem>
                           </SelectContent>
                         </Select>
-                        {index > 0 ? (
+                        {query.constraints.where.clauses.length > 1 ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -485,7 +507,7 @@ export function QueryForm({
                             <span className="sr-only">Delete clause</span>
                           </Button>
                         ) : (
-                          <div className="w-10"></div> // Empty placeholder for the first row
+                          <div className="w-10"></div> // Empty placeholder when there's only one clause
                         )}
                       </React.Fragment>
                     ))}
