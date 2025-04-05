@@ -29,6 +29,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuAction,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
@@ -44,9 +45,16 @@ import {
 } from "@/components/query-builder/types";
 
 export default function Dashboard() {
-  // State for the currently active query
-  const [currentQuery, setCurrentQuery] = useState<QueryState>(
-    createDefaultQuery()
+  // Create a default query with a draft name
+  const createDraftQuery = (draftNumber: number) => {
+    const query = createDefaultQuery();
+    query.title = `Draft Query #${draftNumber}`;
+    return query;
+  };
+
+  // State for the currently active query - initialize with Draft Query #1
+  const [currentQuery, setCurrentQuery] = useState<QueryState>(() =>
+    createDraftQuery(1)
   );
 
   // UI state
@@ -66,6 +74,18 @@ export default function Dashboard() {
         const parsedQueries = JSON.parse(storedQueries) as QueryState[];
         setSavedQueries(parsedQueries);
 
+        // Determine the highest draft number from existing queries
+        let highestDraftNumber = 0;
+        parsedQueries.forEach((query) => {
+          const match = query.title.match(/Draft Query #(\d+)/);
+          if (match && match[1]) {
+            const draftNumber = parseInt(match[1], 10);
+            if (!isNaN(draftNumber) && draftNumber > highestDraftNumber) {
+              highestDraftNumber = draftNumber;
+            }
+          }
+        });
+
         // If there are saved queries, set the most recent one as active
         if (parsedQueries.length > 0) {
           const mostRecent = parsedQueries.sort(
@@ -76,6 +96,12 @@ export default function Dashboard() {
       } catch (error) {
         console.error("Error loading saved queries:", error);
       }
+    } else {
+      // If no saved queries, initialize with Draft Query #1 and save it
+      const initialDraft = createDraftQuery(1);
+      setSavedQueries([initialDraft]);
+      setCurrentQuery(initialDraft);
+      setActiveQueryId(initialDraft.id);
     }
   }, []);
 
@@ -84,13 +110,36 @@ export default function Dashboard() {
     localStorage.setItem("savedQueries", JSON.stringify(savedQueries));
   }, [savedQueries]);
 
-  // Create a new query
+  // Create a new query with incremented draft number and save it to the list
   const createNewQuery = () => {
-    setCurrentQuery(createDefaultQuery());
+    // Find the highest existing draft number
+    let highestDraftNumber = 0;
+    savedQueries.forEach((query) => {
+      const match = query.title.match(/Draft Query #(\d+)/);
+      if (match && match[1]) {
+        const draftNumber = parseInt(match[1], 10);
+        if (!isNaN(draftNumber) && draftNumber > highestDraftNumber) {
+          highestDraftNumber = draftNumber;
+        }
+      }
+    });
+
+    // Use the highest existing draft number + 1
+    const nextDraftNumber = highestDraftNumber + 1;
+
+    // Create the new draft query
+    const newDraftQuery = createDraftQuery(nextDraftNumber);
+
+    // Update current query
+    setCurrentQuery(newDraftQuery);
     setIsLoading(false);
     setError(null);
     setResults(null);
-    setActiveQueryId(null);
+
+    // Add to saved queries list
+    const updatedQueries = [...savedQueries, newDraftQuery];
+    setSavedQueries(updatedQueries);
+    setActiveQueryId(newDraftQuery.id);
   };
 
   // Save the current query
@@ -125,9 +174,12 @@ export default function Dashboard() {
     const updatedQueries = savedQueries.filter((q) => q.id !== id);
     setSavedQueries(updatedQueries);
 
-    // If the deleted query was active, create a new query
+    // If the deleted query was active, clear the active query
     if (activeQueryId === id) {
-      createNewQuery();
+      setActiveQueryId(null);
+      setCurrentQuery(null as any); // Clear current query
+      setResults(null);
+      setError(null);
     }
   };
 
@@ -368,27 +420,20 @@ export default function Dashboard() {
                           <SidebarMenuButton
                             isActive={activeQueryId === query.id}
                             onClick={() => loadQuery(query)}
-                            className="w-full px-4 py-2"
+                            className="px-4 py-2"
                           >
-                            <div className="flex items-center justify-between w-full">
-                              <div className="flex items-center min-w-0">
-                                <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="truncate">{query.title}</span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteQuery(query.id);
-                                }}
-                                className="ml-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                                <span className="sr-only">Delete</span>
-                              </Button>
-                            </div>
+                            <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+                            <span className="truncate">{query.title}</span>
                           </SidebarMenuButton>
+                          <SidebarMenuAction
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteQuery(query.id);
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span className="sr-only">Delete</span>
+                          </SidebarMenuAction>
                         </SidebarMenuItem>
                       ))}
                   </SidebarMenu>
@@ -406,36 +451,58 @@ export default function Dashboard() {
           </div>
 
           <div className="flex-1 overflow-auto p-4">
-            <div className="flex flex-col gap-4">
-              {/* Save button */}
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={saveQuery}
-                  className="flex items-center gap-1 whitespace-nowrap"
-                  title="Save query"
-                >
-                  <Save className="h-4 w-4" />
-                  Save Query
-                </Button>
+            {activeQueryId ? (
+              <div className="flex flex-col gap-4">
+                {/* Save button */}
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={saveQuery}
+                    className="flex items-center gap-1 whitespace-nowrap"
+                    title="Save query"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save Query
+                  </Button>
+                </div>
+
+                {/* Query Form */}
+                <QueryForm
+                  query={currentQuery}
+                  onChange={handleQueryChange}
+                  onExecute={executeQuery}
+                  isLoading={isLoading}
+                />
+
+                {/* Query Results */}
+                <QueryResults
+                  isLoading={isLoading}
+                  error={error}
+                  results={results}
+                />
               </div>
-
-              {/* Query Form */}
-              <QueryForm
-                query={currentQuery}
-                onChange={handleQueryChange}
-                onExecute={executeQuery}
-                isLoading={isLoading}
-              />
-
-              {/* Query Results */}
-              <QueryResults
-                isLoading={isLoading}
-                error={error}
-                results={results}
-              />
-            </div>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center p-8 max-w-md">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-medium mb-2">
+                    No query selected
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Select a query from the sidebar or create a new query to get
+                    started.
+                  </p>
+                  <Button
+                    onClick={createNewQuery}
+                    className="flex mx-auto items-center gap-2"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Create New Query
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
