@@ -448,16 +448,15 @@ export default function Dashboard() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar component - direct child of flex container */}
         <Sidebar variant="sidebar" collapsible="icon" className="border-r">
-          <SidebarHeader className="flex items-center justify-between p-4 border-b">
-            <h2 className="font-semibold">Saved Queries</h2>
+          <SidebarHeader className="flex items-center justify-between p-3 border-b">
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={createNewQuery}
-              className="h-8 w-8"
-              title="Create new query"
+              className="w-full"
             >
-              <PlusCircle className="h-4 w-4" />
+              <PlusCircle className="h-4 w-4 mr-2" />
+              New Query
             </Button>
           </SidebarHeader>
 
@@ -478,10 +477,42 @@ export default function Dashboard() {
                           <SidebarMenuButton
                             isActive={activeQueryId === query.id}
                             onClick={() => loadQuery(query)}
-                            className="px-4 py-2"
+                            className="px-4 py-2 min-h-[60px]"
                           >
-                            <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{query.title}</span>
+                            <div className="flex flex-col items-start">
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="truncate">{query.title}</span>
+                              </div>
+
+                              {/* Query info chips */}
+                              <div className="flex flex-wrap gap-1 mt-1 ml-6">
+                                {/* Source type chip */}
+                                <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {query.source.type === "collection"
+                                    ? "col"
+                                    : "grp"}
+                                </span>
+
+                                {/* Constraints chip - show if any constraint is enabled */}
+                                {(query.constraints.where.enabled ||
+                                  query.constraints.orderBy.enabled ||
+                                  query.constraints.limit.enabled) && (
+                                  <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                    const
+                                  </span>
+                                )}
+
+                                {/* Aggregation chip - show if any aggregation is enabled */}
+                                {(query.aggregation.count.enabled ||
+                                  query.aggregation.sum.enabled ||
+                                  query.aggregation.average.enabled) && (
+                                  <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                    agg
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </SidebarMenuButton>
                           <SidebarMenuAction
                             onClick={(e) => {
