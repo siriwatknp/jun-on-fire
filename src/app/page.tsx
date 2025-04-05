@@ -8,6 +8,7 @@ import {
   PlusCircle,
   Pencil,
   Check,
+  Loader2,
 } from "lucide-react";
 import {
   collection,
@@ -58,6 +59,7 @@ import {
   WhereClause,
   createDefaultQuery,
 } from "@/components/query-builder/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   // Create a default query with a draft name
@@ -74,6 +76,7 @@ export default function Dashboard() {
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // Track initial loading state
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<DocumentData[] | null>(null);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
@@ -87,6 +90,7 @@ export default function Dashboard() {
   // Load saved queries from IndexedDB on component mount
   useEffect(() => {
     const loadQueries = async () => {
+      setIsInitialLoading(true); // Set loading state to true when starting to load
       try {
         const storedQueries = await getAllQueries();
 
@@ -124,6 +128,8 @@ export default function Dashboard() {
       } catch (error) {
         console.error("Error loading saved queries:", error);
         toast.error("Failed to load saved queries");
+      } finally {
+        setIsInitialLoading(false); // Set loading state to false when done
       }
     };
 
@@ -496,22 +502,45 @@ export default function Dashboard() {
         {/* Sidebar component - direct child of flex container */}
         <Sidebar variant="sidebar" collapsible="icon" className="border-r">
           <SidebarHeader className="flex items-center justify-between p-3 border-b">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={createNewQuery}
-              className="w-full"
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              New Query
-            </Button>
+            {isInitialLoading ? (
+              <Skeleton className="h-9 w-full" />
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={createNewQuery}
+                className="w-full"
+                disabled={isInitialLoading}
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                New Query
+              </Button>
+            )}
           </SidebarHeader>
 
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel className="px-4">My Queries</SidebarGroupLabel>
               <SidebarGroupContent>
-                {savedQueries.length === 0 ? (
+                {isInitialLoading ? (
+                  <div className="space-y-2 p-2">
+                    {/* Skeleton items for the sidebar queries */}
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="px-4 py-2 min-h-[60px]">
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center">
+                            <Skeleton className="h-4 w-4 mr-2" />
+                            <Skeleton className="h-5 w-32" />
+                          </div>
+                          <div className="flex ml-6 space-x-1">
+                            <Skeleton className="h-4 w-10 rounded-full" />
+                            <Skeleton className="h-4 w-14 rounded-full" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : savedQueries.length === 0 ? (
                   <p className="text-sm text-gray-500 px-4 py-2">
                     No saved queries yet
                   </p>
@@ -587,7 +616,71 @@ export default function Dashboard() {
           </div>
 
           <div className="flex-1 overflow-auto p-4">
-            {activeQueryId ? (
+            {isInitialLoading ? (
+              <div className="space-y-6 p-4">
+                {/* Title and save button skeleton */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-7 w-48" />
+                  </div>
+                  <Skeleton className="h-9 w-28" />
+                </div>
+
+                {/* Query form skeleton */}
+                <div className="space-y-4">
+                  {/* Source section skeleton */}
+                  <div className="space-y-2 border rounded-lg p-4">
+                    <Skeleton className="h-5 w-24" />
+                    <div className="flex space-x-4">
+                      <Skeleton className="h-10 w-36" />
+                      <Skeleton className="h-10 flex-1" />
+                    </div>
+                  </div>
+
+                  {/* Query options skeleton */}
+                  <div className="space-y-3 border rounded-lg p-4">
+                    <Skeleton className="h-5 w-32" />
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-6 w-24" />
+                    </div>
+                  </div>
+
+                  {/* Execute button skeleton */}
+                  <div className="flex justify-end">
+                    <Skeleton className="h-9 w-36" />
+                  </div>
+                </div>
+
+                {/* Results area skeleton */}
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-32" />
+                  <div className="border rounded-lg p-4">
+                    <div className="space-y-2">
+                      {/* Table header skeleton */}
+                      <div className="flex border-b pb-2">
+                        <Skeleton className="h-5 w-24 mr-4" />
+                        <Skeleton className="h-5 w-24 mr-4" />
+                        <Skeleton className="h-5 w-24" />
+                      </div>
+                      {/* Table rows skeleton */}
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex py-2">
+                          <Skeleton className="h-4 w-24 mr-4" />
+                          <Skeleton className="h-4 w-24 mr-4" />
+                          <Skeleton className="h-4 w-24" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : activeQueryId ? (
               <div className="flex flex-col gap-4">
                 {/* Title and Save button row */}
                 <div className="flex justify-between items-center">
