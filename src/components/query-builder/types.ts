@@ -17,11 +17,15 @@ export type WhereOperator =
 // Order Direction
 export type OrderDirection = "asc" | "desc";
 
+// Value Type for Where Clause
+export type ValueType = "string" | "number" | "boolean" | "null" | "timestamp";
+
 // Where Clause
 export interface WhereClause {
   field: string;
   operator: WhereOperator;
   value: string;
+  valueType: ValueType;
 }
 
 // Define the unified query state schema
@@ -94,7 +98,7 @@ export const createDefaultQuery = (): QueryState => ({
   constraints: {
     where: {
       enabled: false,
-      clauses: [{ field: "", operator: "==", value: "" }],
+      clauses: [{ field: "", operator: "==", value: "", valueType: "string" }],
     },
     orderBy: {
       enabled: false,

@@ -23,6 +23,7 @@ import {
   WhereOperator,
   WhereClause,
   OrderDirection,
+  ValueType,
 } from "./types";
 
 export function QueryForm({
@@ -50,7 +51,7 @@ export function QueryForm({
           ...q.constraints.where,
           clauses: [
             ...q.constraints.where.clauses,
-            { field: "", operator: "==", value: "" },
+            { field: "", operator: "==", value: "", valueType: "string" },
           ],
         },
       },
@@ -61,14 +62,47 @@ export function QueryForm({
   const updateWhereClause = (
     index: number,
     key: keyof WhereClause,
-    value: string
+    value: string | ValueType
   ) => {
     updateQuery((q) => {
       const newClauses = [...q.constraints.where.clauses];
-      newClauses[index] = {
-        ...newClauses[index],
-        [key]: key === "operator" ? (value as WhereOperator) : value,
-      };
+
+      if (key === "valueType") {
+        // When changing value type, we might need to adjust the value
+        const currentValue = newClauses[index].value;
+        let newValue = currentValue;
+
+        // Convert value based on new type
+        if (value === "number" && !isNaN(Number(currentValue))) {
+          newValue = currentValue;
+        } else if (value === "boolean") {
+          newValue = currentValue === "true" ? "true" : "false";
+        } else if (value === "null") {
+          newValue = "null";
+        } else if (value === "timestamp") {
+          // Default to current timestamp if empty or invalid
+          if (!currentValue || isNaN(new Date(currentValue).getTime())) {
+            const now = new Date();
+            newValue = now.toISOString();
+          } else {
+            // If current value can be parsed as date, keep it
+            newValue = currentValue;
+          }
+        } else if (value === "string") {
+          newValue = currentValue;
+        }
+
+        newClauses[index] = {
+          ...newClauses[index],
+          valueType: value as ValueType,
+          value: newValue,
+        };
+      } else {
+        newClauses[index] = {
+          ...newClauses[index],
+          [key]: key === "operator" ? (value as WhereOperator) : value,
+        };
+      }
 
       return {
         ...q,
@@ -146,7 +180,9 @@ export function QueryForm({
       constraints: {
         where: {
           enabled: false,
-          clauses: [{ field: "", operator: "==", value: "" }],
+          clauses: [
+            { field: "", operator: "==", value: "", valueType: "string" },
+          ],
         },
         orderBy: {
           enabled: false,
@@ -263,8 +299,8 @@ export function QueryForm({
               </div>
 
               {query.constraints.where.enabled && (
-                <div className="pl-6 space-y-3 max-w-xl mt-2">
-                  <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                <div className="pl-6 space-y-3 max-w-3xl mt-2">
+                  <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2">
                     {query.constraints.where.clauses.map((clause, index) => (
                       <React.Fragment key={index}>
                         <Input
@@ -311,6 +347,27 @@ export function QueryForm({
                             updateWhereClause(index, "value", e.target.value)
                           }
                         />
+                        <Select
+                          value={clause.valueType}
+                          onValueChange={(value) =>
+                            updateWhereClause(
+                              index,
+                              "valueType",
+                              value as ValueType
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="string">string</SelectItem>
+                            <SelectItem value="boolean">boolean</SelectItem>
+                            <SelectItem value="number">number</SelectItem>
+                            <SelectItem value="timestamp">timestamp</SelectItem>
+                            <SelectItem value="null">null</SelectItem>
+                          </SelectContent>
+                        </Select>
                         {index > 0 ? (
                           <Button
                             type="button"

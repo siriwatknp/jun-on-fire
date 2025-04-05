@@ -24,6 +24,7 @@ import {
   count,
   sum,
   average,
+  Timestamp,
 } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebase";
 import { Toaster, toast } from "sonner";
@@ -322,32 +323,67 @@ export default function Dashboard() {
       if (queryToExecute.constraints.where.enabled) {
         queryToExecute.constraints.where.clauses.forEach(
           (clause: WhereClause) => {
-            if (clause.field && clause.value) {
-              // Handle array operators differently
+            if (clause.field && clause.value !== undefined) {
+              // Parse value based on its type
+              let parsedValue;
+
+              // Handle array operators separately
               if (
                 ["in", "not-in", "array-contains-any"].includes(clause.operator)
               ) {
                 try {
                   // Attempt to parse as JSON array if it's a string representing an array
-                  let parsedValue;
+                  let parsedItems;
                   try {
-                    parsedValue = JSON.parse(clause.value);
+                    parsedItems = JSON.parse(clause.value);
                   } catch (e) {
                     // If not valid JSON, treat as a comma-separated list
-                    parsedValue = clause.value
+                    parsedItems = clause.value
                       .split(",")
                       .map((item: string) => item.trim());
                   }
 
                   // Ensure it's an array
-                  const arrayValue = Array.isArray(parsedValue)
-                    ? parsedValue
-                    : [parsedValue];
+                  const arrayValue = Array.isArray(parsedItems)
+                    ? parsedItems
+                    : [parsedItems];
+
+                  // Convert array items based on valueType
+                  if (clause.valueType === "number") {
+                    parsedValue = arrayValue.map((item) => Number(item));
+                  } else if (clause.valueType === "boolean") {
+                    parsedValue = arrayValue.map((item) =>
+                      item === "true" || item === true ? true : false
+                    );
+                  } else if (clause.valueType === "null") {
+                    parsedValue = arrayValue.map((item) => null);
+                  } else if (clause.valueType === "timestamp") {
+                    try {
+                      parsedValue = arrayValue.map((item) => {
+                        const date = new Date(item);
+                        if (isNaN(date.getTime())) {
+                          throw new Error(
+                            `Invalid date value in array: ${item}`
+                          );
+                        }
+                        return Timestamp.fromDate(date);
+                      });
+                    } catch (e) {
+                      console.error("Error parsing timestamp array:", e);
+                      throw new Error(
+                        `Invalid timestamp format in array. Use ISO format (YYYY-MM-DDTHH:MM:SS.sssZ).`
+                      );
+                    }
+                  } else {
+                    // Default to string
+                    parsedValue = arrayValue;
+                  }
+
                   constraints.push(
                     where(
                       clause.field,
                       clause.operator as WhereFilterOp,
-                      arrayValue
+                      parsedValue
                     )
                   );
                 } catch (e) {
@@ -357,12 +393,40 @@ export default function Dashboard() {
                   );
                 }
               } else {
-                // For non-array operators, use the value directly
+                // For non-array operators, handle value based on its type
+                if (clause.valueType === "number") {
+                  parsedValue = Number(clause.value);
+                  if (isNaN(parsedValue)) {
+                    throw new Error(`Invalid number value: ${clause.value}`);
+                  }
+                } else if (clause.valueType === "boolean") {
+                  parsedValue = clause.value === "true";
+                } else if (clause.valueType === "null") {
+                  parsedValue = null;
+                } else if (clause.valueType === "timestamp") {
+                  try {
+                    // Convert the ISO string or date string to a Firestore Timestamp
+                    const date = new Date(clause.value);
+                    if (isNaN(date.getTime())) {
+                      throw new Error(`Invalid date value: ${clause.value}`);
+                    }
+                    parsedValue = Timestamp.fromDate(date);
+                  } catch (e) {
+                    console.error("Error parsing timestamp:", e);
+                    throw new Error(
+                      `Invalid timestamp format: ${clause.value}. Use ISO format (YYYY-MM-DDTHH:MM:SS.sssZ).`
+                    );
+                  }
+                } else {
+                  // Default to string
+                  parsedValue = clause.value;
+                }
+
                 constraints.push(
                   where(
                     clause.field,
                     clause.operator as WhereFilterOp,
-                    clause.value
+                    parsedValue
                   )
                 );
               }
