@@ -187,7 +187,7 @@ export function QueryForm({
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-white rounded-lg shadow-sm p-6">
       {/* Query title input */}
       <div className="flex gap-2 items-center mb-6">
         <Input

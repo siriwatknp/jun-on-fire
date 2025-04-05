@@ -291,125 +291,111 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
-      <header className="bg-white border-b px-6 py-3">
-        <h1 className="text-xl font-bold">Jun on Fire</h1>
-        <p className="text-gray-500 text-sm">
-          A better Firestore console experience
-        </p>
-      </header>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar component - direct child of flex container */}
+        <Sidebar variant="sidebar" collapsible="icon" className="border-r">
+          <SidebarHeader className="flex items-center justify-between p-4 border-b">
+            <h2 className="font-semibold">Saved Queries</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={createNewQuery}
+              className="h-8 w-8"
+              title="Create new query"
+            >
+              <PlusCircle className="h-4 w-4" />
+            </Button>
+          </SidebarHeader>
 
-      <main className="flex-1 flex overflow-hidden">
-        <SidebarProvider defaultOpen={true}>
-          <div className="flex h-full w-full overflow-hidden">
-            <Sidebar variant="sidebar" collapsible="icon" className="border-r">
-              <SidebarHeader className="flex items-center justify-between p-4 border-b">
-                <h2 className="font-semibold">Saved Queries</h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={createNewQuery}
-                  className="h-8 w-8"
-                  title="Create new query"
-                >
-                  <PlusCircle className="h-4 w-4" />
-                </Button>
-              </SidebarHeader>
-
-              <SidebarContent>
-                <SidebarGroup>
-                  <SidebarGroupLabel className="px-4">
-                    My Queries
-                  </SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    {savedQueries.length === 0 ? (
-                      <p className="text-sm text-gray-500 px-4 py-2">
-                        No saved queries yet
-                      </p>
-                    ) : (
-                      <SidebarMenu>
-                        {savedQueries
-                          .sort((a, b) => b.updatedAt - a.updatedAt)
-                          .map((query) => (
-                            <SidebarMenuItem key={query.id}>
-                              <SidebarMenuButton
-                                isActive={activeQueryId === query.id}
-                                onClick={() => loadQuery(query)}
-                                className="w-full px-4 py-2"
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel className="px-4">My Queries</SidebarGroupLabel>
+              <SidebarGroupContent>
+                {savedQueries.length === 0 ? (
+                  <p className="text-sm text-gray-500 px-4 py-2">
+                    No saved queries yet
+                  </p>
+                ) : (
+                  <SidebarMenu>
+                    {savedQueries
+                      .sort((a, b) => b.updatedAt - a.updatedAt)
+                      .map((query) => (
+                        <SidebarMenuItem key={query.id}>
+                          <SidebarMenuButton
+                            isActive={activeQueryId === query.id}
+                            onClick={() => loadQuery(query)}
+                            className="w-full px-4 py-2"
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center min-w-0">
+                                <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="truncate">{query.title}</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteQuery(query.id);
+                                }}
+                                className="ml-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
                               >
-                                <div className="flex items-center justify-between w-full">
-                                  <div className="flex items-center min-w-0">
-                                    <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                                    <span className="truncate">
-                                      {query.title}
-                                    </span>
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      deleteQuery(query.id);
-                                    }}
-                                    className="ml-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                    <span className="sr-only">Delete</span>
-                                  </Button>
-                                </div>
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                          ))}
-                      </SidebarMenu>
-                    )}
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </SidebarContent>
-            </Sidebar>
+                                <Trash2 className="h-3 w-3" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </div>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                  </SidebarMenu>
+                )}
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
 
-            {/* Main content area */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex items-center p-4 border-b">
-                <SidebarTrigger className="mr-2" />
-                <h2 className="text-lg font-semibold">Query Builder</h2>
+        {/* Main content area - direct sibling of Sidebar */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center p-4 border-b">
+            <SidebarTrigger className="mr-2" />
+            <h2 className="text-lg font-semibold">Query Builder</h2>
+          </div>
+
+          <div className="flex-1 overflow-auto p-4">
+            <div className="flex flex-col gap-4">
+              {/* Save button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={saveQuery}
+                  className="flex items-center gap-1 whitespace-nowrap"
+                  title="Save query"
+                >
+                  <Save className="h-4 w-4" />
+                  Save Query
+                </Button>
               </div>
 
-              <div className="flex-1 overflow-auto p-4">
-                <div className="max-w-3xl mx-auto flex flex-col gap-4">
-                  {/* Save button */}
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={saveQuery}
-                      className="flex items-center gap-1 whitespace-nowrap"
-                      title="Save query"
-                    >
-                      <Save className="h-4 w-4" />
-                      Save Query
-                    </Button>
-                  </div>
+              {/* Query Form */}
+              <QueryForm
+                query={currentQuery}
+                onChange={handleQueryChange}
+                onExecute={executeQuery}
+                isLoading={isLoading}
+              />
 
-                  {/* Query Form */}
-                  <QueryForm
-                    query={currentQuery}
-                    onChange={handleQueryChange}
-                    onExecute={executeQuery}
-                    isLoading={isLoading}
-                  />
-
-                  {/* Query Results */}
-                  <QueryResults
-                    isLoading={isLoading}
-                    error={error}
-                    results={results}
-                  />
-                </div>
-              </div>
+              {/* Query Results */}
+              <QueryResults
+                isLoading={isLoading}
+                error={error}
+                results={results}
+              />
             </div>
           </div>
-        </SidebarProvider>
-      </main>
-    </div>
+        </main>
+      </div>
+    </SidebarProvider>
   );
 }
