@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { PlusCircle, Trash2, Play, RotateCcw } from "lucide-react";
+import { PlusCircle, Trash2, Play, RotateCcw, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -145,20 +145,125 @@ export function QueryForm({
     }));
   };
 
-  // Toggle an aggregation option
-  const toggleAggregation = (
-    aggregationKey: keyof typeof query.aggregation
-  ) => {
+  // Add a field to sum aggregation
+  const addSumField = () => {
     updateQuery((q) => ({
       ...q,
       aggregation: {
         ...q.aggregation,
-        [aggregationKey]: {
-          ...q.aggregation[aggregationKey],
-          enabled: !q.aggregation[aggregationKey].enabled,
+        sum: {
+          ...q.aggregation.sum,
+          fields: [...q.aggregation.sum.fields, ""],
         },
       },
     }));
+  };
+
+  // Remove a field from sum aggregation
+  const removeSumField = (index: number) => {
+    updateQuery((q) => ({
+      ...q,
+      aggregation: {
+        ...q.aggregation,
+        sum: {
+          ...q.aggregation.sum,
+          fields: q.aggregation.sum.fields.filter((_, i) => i !== index),
+        },
+      },
+    }));
+  };
+
+  // Update a sum field
+  const updateSumField = (index: number, value: string) => {
+    updateQuery((q) => {
+      const newFields = [...q.aggregation.sum.fields];
+      newFields[index] = value;
+      return {
+        ...q,
+        aggregation: {
+          ...q.aggregation,
+          sum: {
+            ...q.aggregation.sum,
+            fields: newFields,
+          },
+        },
+      };
+    });
+  };
+
+  // Add a field to average aggregation
+  const addAverageField = () => {
+    updateQuery((q) => ({
+      ...q,
+      aggregation: {
+        ...q.aggregation,
+        average: {
+          ...q.aggregation.average,
+          fields: [...q.aggregation.average.fields, ""],
+        },
+      },
+    }));
+  };
+
+  // Remove a field from average aggregation
+  const removeAverageField = (index: number) => {
+    updateQuery((q) => ({
+      ...q,
+      aggregation: {
+        ...q.aggregation,
+        average: {
+          ...q.aggregation.average,
+          fields: q.aggregation.average.fields.filter((_, i) => i !== index),
+        },
+      },
+    }));
+  };
+
+  // Update an average field
+  const updateAverageField = (index: number, value: string) => {
+    updateQuery((q) => {
+      const newFields = [...q.aggregation.average.fields];
+      newFields[index] = value;
+      return {
+        ...q,
+        aggregation: {
+          ...q.aggregation,
+          average: {
+            ...q.aggregation.average,
+            fields: newFields,
+          },
+        },
+      };
+    });
+  };
+
+  // Toggle an aggregation option
+  const toggleAggregation = (
+    aggregationKey: keyof typeof query.aggregation
+  ) => {
+    updateQuery((q) => {
+      const newState = {
+        ...q,
+        aggregation: {
+          ...q.aggregation,
+          [aggregationKey]: {
+            ...q.aggregation[aggregationKey],
+            enabled: !q.aggregation[aggregationKey].enabled,
+          },
+        },
+      };
+
+      // Initialize with at least one empty field when enabling
+      if (
+        (aggregationKey === "sum" || aggregationKey === "average") &&
+        !q.aggregation[aggregationKey].enabled &&
+        q.aggregation[aggregationKey].fields.length === 0
+      ) {
+        newState.aggregation[aggregationKey].fields = [""];
+      }
+
+      return newState;
+    });
   };
 
   // Check if any option is enabled
@@ -200,11 +305,11 @@ export function QueryForm({
         },
         sum: {
           enabled: false,
-          field: "",
+          fields: [],
         },
         average: {
           enabled: false,
-          field: "",
+          fields: [],
         },
       },
     }));
@@ -509,23 +614,57 @@ export function QueryForm({
               </div>
 
               {query.aggregation.sum.enabled && (
-                <div className="pl-6 max-w-xl mt-2">
-                  <Input
-                    placeholder="Field to sum"
-                    value={query.aggregation.sum.field}
-                    onChange={(e) =>
-                      updateQuery((q) => ({
-                        ...q,
-                        aggregation: {
-                          ...q.aggregation,
-                          sum: {
-                            ...q.aggregation.sum,
-                            field: e.target.value,
-                          },
-                        },
-                      }))
-                    }
-                  />
+                <div className="pl-6 max-w-xl mt-2 space-y-2">
+                  {query.aggregation.sum.fields.length === 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addSumField}
+                      className="flex items-center gap-1"
+                    >
+                      <PlusCircle className="h-4 w-4" /> Add Field
+                    </Button>
+                  ) : (
+                    <>
+                      {query.aggregation.sum.fields.map((field, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-2"
+                        >
+                          <Input
+                            placeholder="Field to sum"
+                            value={field}
+                            onChange={(e) =>
+                              updateSumField(index, e.target.value)
+                            }
+                            className="flex-1"
+                          />
+                          {query.aggregation.sum.fields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeSumField(index)}
+                              className="h-10 w-10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Remove field</span>
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addSumField}
+                        className="flex items-center gap-1 mt-2"
+                      >
+                        <Plus className="h-4 w-4" /> Add Field
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -544,23 +683,57 @@ export function QueryForm({
               </div>
 
               {query.aggregation.average.enabled && (
-                <div className="pl-6 max-w-xl mt-2">
-                  <Input
-                    placeholder="Field to average"
-                    value={query.aggregation.average.field}
-                    onChange={(e) =>
-                      updateQuery((q) => ({
-                        ...q,
-                        aggregation: {
-                          ...q.aggregation,
-                          average: {
-                            ...q.aggregation.average,
-                            field: e.target.value,
-                          },
-                        },
-                      }))
-                    }
-                  />
+                <div className="pl-6 max-w-xl mt-2 space-y-2">
+                  {query.aggregation.average.fields.length === 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addAverageField}
+                      className="flex items-center gap-1"
+                    >
+                      <PlusCircle className="h-4 w-4" /> Add Field
+                    </Button>
+                  ) : (
+                    <>
+                      {query.aggregation.average.fields.map((field, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-2"
+                        >
+                          <Input
+                            placeholder="Field to average"
+                            value={field}
+                            onChange={(e) =>
+                              updateAverageField(index, e.target.value)
+                            }
+                            className="flex-1"
+                          />
+                          {query.aggregation.average.fields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeAverageField(index)}
+                              className="h-10 w-10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Remove field</span>
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addAverageField}
+                        className="flex items-center gap-1 mt-2"
+                      >
+                        <Plus className="h-4 w-4" /> Add Field
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -469,16 +469,20 @@ export default function Dashboard() {
         // Validate field inputs for sum and average
         if (
           queryToExecute.aggregation.sum.enabled &&
-          !queryToExecute.aggregation.sum.field
+          queryToExecute.aggregation.sum.fields.length === 0
         ) {
-          throw new Error("A field must be specified for sum aggregation");
+          throw new Error(
+            "At least one field must be specified for sum aggregation"
+          );
         }
 
         if (
           queryToExecute.aggregation.average.enabled &&
-          !queryToExecute.aggregation.average.field
+          queryToExecute.aggregation.average.fields.length === 0
         ) {
-          throw new Error("A field must be specified for average aggregation");
+          throw new Error(
+            "At least one field must be specified for average aggregation"
+          );
         }
 
         // Build the base query with all constraints
@@ -495,14 +499,24 @@ export default function Dashboard() {
           aggregateSpec.count = count();
         }
 
+        // Add sum for each field
         if (queryToExecute.aggregation.sum.enabled) {
-          aggregateSpec.sum = sum(queryToExecute.aggregation.sum.field);
+          queryToExecute.aggregation.sum.fields.forEach((field, index) => {
+            if (field.trim() === "") {
+              throw new Error(`Sum field ${index + 1} cannot be empty`);
+            }
+            aggregateSpec[`sum_${field}`] = sum(field);
+          });
         }
 
+        // Add average for each field
         if (queryToExecute.aggregation.average.enabled) {
-          aggregateSpec.average = average(
-            queryToExecute.aggregation.average.field
-          );
+          queryToExecute.aggregation.average.fields.forEach((field, index) => {
+            if (field.trim() === "") {
+              throw new Error(`Average field ${index + 1} cannot be empty`);
+            }
+            aggregateSpec[`avg_${field}`] = average(field);
+          });
         }
 
         // Execute the aggregation query
@@ -515,16 +529,25 @@ export default function Dashboard() {
         // Format the results
         const formattedResults: any = {};
 
+        // Add count if enabled
         if (queryToExecute.aggregation.count.enabled) {
           formattedResults.count = aggregateData.count;
         }
 
+        // Add sum results
         if (queryToExecute.aggregation.sum.enabled) {
-          formattedResults.sum = aggregateData.sum;
+          formattedResults.sum = {};
+          queryToExecute.aggregation.sum.fields.forEach((field) => {
+            formattedResults.sum[field] = aggregateData[`sum_${field}`];
+          });
         }
 
+        // Add average results
         if (queryToExecute.aggregation.average.enabled) {
-          formattedResults.average = aggregateData.average;
+          formattedResults.average = {};
+          queryToExecute.aggregation.average.fields.forEach((field) => {
+            formattedResults.average[field] = aggregateData[`avg_${field}`];
+          });
         }
 
         setResults([formattedResults]);

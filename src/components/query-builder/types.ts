@@ -68,11 +68,11 @@ export interface QueryState {
     };
     sum: {
       enabled: boolean;
-      field: string;
+      fields: string[];
     };
     average: {
       enabled: boolean;
-      field: string;
+      fields: string[];
     };
   };
 }
@@ -116,11 +116,11 @@ export const createDefaultQuery = (): QueryState => ({
     },
     sum: {
       enabled: false,
-      field: "",
+      fields: [],
     },
     average: {
       enabled: false,
-      field: "",
+      fields: [],
     },
   },
 });
