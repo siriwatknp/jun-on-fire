@@ -25,6 +25,7 @@ import {
   average,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Toaster, toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -437,7 +438,10 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Error executing query:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
+      const errorMessage =
+        err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage); // Still set error state for the QueryResults component
+      toast.error(errorMessage); // Also show a toast notification
     } finally {
       setIsLoading(false);
     }
@@ -446,6 +450,7 @@ export default function Dashboard() {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex-1 flex overflow-hidden">
+        <Toaster position="top-right" richColors />
         {/* Sidebar component - direct child of flex container */}
         <Sidebar variant="sidebar" collapsible="icon" className="border-r">
           <SidebarHeader className="flex items-center justify-between p-3 border-b">
