@@ -12,6 +12,10 @@ import {
   limit as firestoreLimit,
   DocumentData,
   WhereFilterOp,
+  getAggregateFromServer,
+  count,
+  sum,
+  average,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -232,54 +236,84 @@ export default function Dashboard() {
         }
       }
 
-      // Build the final query
-      const firestoreQuery = query(baseQuery, ...constraints);
+      // Check if we're doing an aggregation query
+      const isAggregationQuery =
+        queryToExecute.aggregation.count.enabled ||
+        queryToExecute.aggregation.sum.enabled ||
+        queryToExecute.aggregation.average.enabled;
 
-      // Execute the query
-      const querySnapshot = await getDocs(firestoreQuery);
+      if (isAggregationQuery) {
+        // Build the base query with all constraints
+        const constrainedQuery = query(baseQuery, ...constraints);
 
-      // Process the results
-      const queryResults: DocumentData[] = [];
-      querySnapshot.forEach((doc) => {
-        queryResults.push({
-          id: doc.id,
-          path: doc.ref.path,
-          ...doc.data(),
+        // Create an object to hold our aggregation specifications
+        const aggregateSpec: Record<
+          string,
+          ReturnType<typeof count | typeof sum | typeof average>
+        > = {};
+
+        // Add the requested aggregations
+        if (queryToExecute.aggregation.count.enabled) {
+          aggregateSpec.count = count();
+        }
+
+        if (
+          queryToExecute.aggregation.sum.enabled &&
+          queryToExecute.aggregation.sum.field
+        ) {
+          aggregateSpec.sum = sum(queryToExecute.aggregation.sum.field);
+        }
+
+        if (
+          queryToExecute.aggregation.average.enabled &&
+          queryToExecute.aggregation.average.field
+        ) {
+          aggregateSpec.average = average(
+            queryToExecute.aggregation.average.field
+          );
+        }
+
+        // Execute the aggregation query
+        const aggregateSnapshot = await getAggregateFromServer(
+          constrainedQuery,
+          aggregateSpec
+        );
+        const aggregateData = aggregateSnapshot.data();
+
+        // Format the results
+        const formattedResults: any = {};
+
+        if (queryToExecute.aggregation.count.enabled) {
+          formattedResults.count = aggregateData.count;
+        }
+
+        if (queryToExecute.aggregation.sum.enabled) {
+          formattedResults.sum = aggregateData.sum;
+        }
+
+        if (queryToExecute.aggregation.average.enabled) {
+          formattedResults.average = aggregateData.average;
+        }
+
+        setResults([formattedResults]);
+      } else {
+        // For non-aggregation queries, use the regular approach
+        // Build the final query
+        const firestoreQuery = query(baseQuery, ...constraints);
+
+        // Execute the query
+        const querySnapshot = await getDocs(firestoreQuery);
+
+        // Process the results
+        const queryResults: DocumentData[] = [];
+        querySnapshot.forEach((doc) => {
+          queryResults.push({
+            id: doc.id,
+            path: doc.ref.path,
+            ...doc.data(),
+          });
         });
-      });
 
-      // Handle aggregations
-      if (queryToExecute.aggregation.count.enabled) {
-        setResults([{ count: querySnapshot.size }]);
-      } else if (
-        queryToExecute.aggregation.sum.enabled &&
-        queryToExecute.aggregation.sum.field
-      ) {
-        const sum = queryResults.reduce((acc, doc) => {
-          const value = doc[queryToExecute.aggregation.sum.field];
-          return acc + (typeof value === "number" ? value : 0);
-        }, 0);
-        setResults([{ sum }]);
-      } else if (
-        queryToExecute.aggregation.average.enabled &&
-        queryToExecute.aggregation.average.field
-      ) {
-        let sum = 0;
-        let count = 0;
-
-        queryResults.forEach((doc) => {
-          const value = doc[queryToExecute.aggregation.average.field];
-          if (typeof value === "number") {
-            sum += value;
-            count++;
-          }
-        });
-
-        const average = count > 0 ? sum / count : 0;
-        setResults([{ average }]);
-      }
-      // Otherwise return all documents
-      else {
         setResults(queryResults);
       }
     } catch (err) {
