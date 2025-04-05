@@ -27,6 +27,7 @@
     "@radix-ui/react-tooltip": "1.1.8",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "dexie": "4.0.11",
     "firebase": "11.4.0",
     "firebase-admin": "13.2.0",
     "lucide-react": "0.479.0",

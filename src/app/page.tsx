@@ -24,8 +24,15 @@ import {
   sum,
   average,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db as firestoreDb } from "@/lib/firebase";
 import { Toaster, toast } from "sonner";
+import {
+  db as appDb,
+  getAllQueries,
+  saveQuery as saveQueryToDb,
+  deleteQuery as deleteQueryFromDb,
+  getLatestQuery,
+} from "@/lib/db";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -77,108 +84,127 @@ export default function Dashboard() {
   const [savedQueries, setSavedQueries] = useState<QueryState[]>([]);
   const [activeQueryId, setActiveQueryId] = useState<string | null>(null);
 
-  // Load saved queries from localStorage on component mount
+  // Load saved queries from IndexedDB on component mount
   useEffect(() => {
-    const storedQueries = localStorage.getItem("savedQueries");
-    if (storedQueries) {
+    const loadQueries = async () => {
       try {
-        const parsedQueries = JSON.parse(storedQueries) as QueryState[];
-        setSavedQueries(parsedQueries);
+        const storedQueries = await getAllQueries();
 
-        // Determine the highest draft number from existing queries
-        let highestDraftNumber = 0;
-        parsedQueries.forEach((query) => {
-          const match = query.title.match(/Draft Query #(\d+)/);
-          if (match && match[1]) {
-            const draftNumber = parseInt(match[1], 10);
-            if (!isNaN(draftNumber) && draftNumber > highestDraftNumber) {
-              highestDraftNumber = draftNumber;
+        if (storedQueries.length > 0) {
+          setSavedQueries(storedQueries);
+          toast.success(`Loaded ${storedQueries.length} queries from database`);
+
+          // Determine the highest draft number from existing queries
+          let highestDraftNumber = 0;
+          storedQueries.forEach((query) => {
+            const match = query.title.match(/Draft Query #(\d+)/);
+            if (match && match[1]) {
+              const draftNumber = parseInt(match[1], 10);
+              if (!isNaN(draftNumber) && draftNumber > highestDraftNumber) {
+                highestDraftNumber = draftNumber;
+              }
             }
-          }
-        });
+          });
 
-        // If there are saved queries, set the most recent one as active
-        if (parsedQueries.length > 0) {
-          const mostRecent = parsedQueries.sort(
+          // Set the most recent query as active
+          const mostRecent = storedQueries.sort(
             (a, b) => b.updatedAt - a.updatedAt
           )[0];
           loadQuery(mostRecent);
+        } else {
+          // If no saved queries, initialize with Draft Query #1 and save it
+          const initialDraft = createDraftQuery(1);
+          setSavedQueries([initialDraft]);
+          setCurrentQuery(initialDraft);
+          setActiveQueryId(initialDraft.id);
+
+          // Save the initial draft to the database
+          await saveQueryToDb(initialDraft);
         }
       } catch (error) {
         console.error("Error loading saved queries:", error);
+        toast.error("Failed to load saved queries");
       }
-    } else {
-      // If no saved queries, initialize with Draft Query #1 and save it
-      const initialDraft = createDraftQuery(1);
-      setSavedQueries([initialDraft]);
-      setCurrentQuery(initialDraft);
-      setActiveQueryId(initialDraft.id);
-    }
+    };
+
+    loadQueries();
   }, []);
 
-  // Save queries to localStorage whenever savedQueries changes
-  useEffect(() => {
-    localStorage.setItem("savedQueries", JSON.stringify(savedQueries));
-  }, [savedQueries]);
-
   // Create a new query with incremented draft number and save it to the list
-  const createNewQuery = () => {
-    // Find the highest existing draft number
-    let highestDraftNumber = 0;
-    savedQueries.forEach((query) => {
-      const match = query.title.match(/Draft Query #(\d+)/);
-      if (match && match[1]) {
-        const draftNumber = parseInt(match[1], 10);
-        if (!isNaN(draftNumber) && draftNumber > highestDraftNumber) {
-          highestDraftNumber = draftNumber;
+  const createNewQuery = async () => {
+    try {
+      // Find the highest existing draft number
+      let highestDraftNumber = 0;
+      savedQueries.forEach((query) => {
+        const match = query.title.match(/Draft Query #(\d+)/);
+        if (match && match[1]) {
+          const draftNumber = parseInt(match[1], 10);
+          if (!isNaN(draftNumber) && draftNumber > highestDraftNumber) {
+            highestDraftNumber = draftNumber;
+          }
         }
-      }
-    });
+      });
 
-    // Use the highest existing draft number + 1
-    const nextDraftNumber = highestDraftNumber + 1;
+      // Use the highest existing draft number + 1
+      const nextDraftNumber = highestDraftNumber + 1;
 
-    // Create the new draft query
-    const newDraftQuery = createDraftQuery(nextDraftNumber);
+      // Create the new draft query
+      const newDraftQuery = createDraftQuery(nextDraftNumber);
 
-    // Update current query
-    setCurrentQuery(newDraftQuery);
-    setIsLoading(false);
-    setError(null);
-    setResults(null);
+      // Update current query
+      setCurrentQuery(newDraftQuery);
+      setIsLoading(false);
+      setError(null);
+      setResults(null);
 
-    // Add to saved queries list
-    const updatedQueries = [...savedQueries, newDraftQuery];
-    setSavedQueries(updatedQueries);
-    setActiveQueryId(newDraftQuery.id);
+      // Add to saved queries list and save to IndexedDB
+      const updatedQueries = [...savedQueries, newDraftQuery];
+      setSavedQueries(updatedQueries);
+      setActiveQueryId(newDraftQuery.id);
 
-    // Enter title edit mode for new queries
-    setEditedTitle(newDraftQuery.title);
-    setIsTitleEditing(true);
-    setTimeout(() => {
-      if (titleInputRef.current) {
-        titleInputRef.current.focus();
-        titleInputRef.current.select();
-      }
-    }, 0);
+      // Save to database
+      await saveQueryToDb(newDraftQuery);
+
+      // Enter title edit mode for new queries
+      setEditedTitle(newDraftQuery.title);
+      setIsTitleEditing(true);
+      setTimeout(() => {
+        if (titleInputRef.current) {
+          titleInputRef.current.focus();
+          titleInputRef.current.select();
+        }
+      }, 0);
+    } catch (error) {
+      console.error("Error creating new query:", error);
+      toast.error("Failed to create new query");
+    }
   };
 
   // Save the current query
-  const saveQuery = () => {
-    // Prepare the query to be saved
-    const queryToSave: QueryState = {
-      ...currentQuery,
-      id: activeQueryId || currentQuery.id,
-      updatedAt: Date.now(),
-    };
+  const saveQuery = async () => {
+    try {
+      // Prepare the query to be saved
+      const queryToSave: QueryState = {
+        ...currentQuery,
+        id: activeQueryId || currentQuery.id,
+        updatedAt: Date.now(),
+      };
 
-    // Determine if we're updating an existing query or adding a new one
-    const updatedQueries = activeQueryId
-      ? savedQueries.map((q) => (q.id === activeQueryId ? queryToSave : q))
-      : [...savedQueries, queryToSave];
+      // Determine if we're updating an existing query or adding a new one
+      const updatedQueries = activeQueryId
+        ? savedQueries.map((q) => (q.id === activeQueryId ? queryToSave : q))
+        : [...savedQueries, queryToSave];
 
-    setSavedQueries(updatedQueries);
-    setActiveQueryId(queryToSave.id);
+      setSavedQueries(updatedQueries);
+      setActiveQueryId(queryToSave.id);
+
+      // Save to database
+      await saveQueryToDb(queryToSave);
+      toast.success("Query saved successfully");
+    } catch (error) {
+      console.error("Error saving query:", error);
+      toast.error("Failed to save query");
+    }
   };
 
   // Load a saved query
@@ -192,16 +218,24 @@ export default function Dashboard() {
   };
 
   // Delete a saved query
-  const deleteQuery = (id: string) => {
-    const updatedQueries = savedQueries.filter((q) => q.id !== id);
-    setSavedQueries(updatedQueries);
+  const deleteQuery = async (id: string) => {
+    try {
+      const updatedQueries = savedQueries.filter((q) => q.id !== id);
+      setSavedQueries(updatedQueries);
 
-    // If the deleted query was active, clear the active query
-    if (activeQueryId === id) {
-      setActiveQueryId(null);
-      setCurrentQuery(null as any); // Clear current query
-      setResults(null);
-      setError(null);
+      // Delete from database
+      await deleteQueryFromDb(id);
+
+      // If the deleted query was active, clear the active query
+      if (activeQueryId === id) {
+        setActiveQueryId(null);
+        setCurrentQuery(null as any); // Clear current query
+        setResults(null);
+        setError(null);
+      }
+    } catch (error) {
+      console.error("Error deleting query:", error);
+      toast.error("Failed to delete query");
     }
   };
 
@@ -224,23 +258,31 @@ export default function Dashboard() {
     }, 0);
   };
 
-  const saveTitleEdit = () => {
+  const saveTitleEdit = async () => {
     if (!activeQueryId || !editedTitle.trim()) return;
 
-    // Update the current query
-    const updatedQuery = { ...currentQuery, title: editedTitle.trim() };
-    setCurrentQuery(updatedQuery);
+    try {
+      // Update the current query
+      const updatedQuery = { ...currentQuery, title: editedTitle.trim() };
+      setCurrentQuery(updatedQuery);
 
-    // Update in saved queries list
-    const updatedQueries = savedQueries.map((query) =>
-      query.id === activeQueryId
-        ? { ...query, title: editedTitle.trim() }
-        : query
-    );
-    setSavedQueries(updatedQueries);
+      // Update in saved queries list
+      const updatedQueries = savedQueries.map((query) =>
+        query.id === activeQueryId
+          ? { ...query, title: editedTitle.trim() }
+          : query
+      );
+      setSavedQueries(updatedQueries);
 
-    // Exit edit mode
-    setIsTitleEditing(false);
+      // Save to database
+      await saveQueryToDb(updatedQuery);
+
+      // Exit edit mode
+      setIsTitleEditing(false);
+    } catch (error) {
+      console.error("Error saving title edit:", error);
+      toast.error("Failed to save title");
+    }
   };
 
   const cancelTitleEdit = () => {
@@ -262,9 +304,9 @@ export default function Dashboard() {
       // Start building the query
       let baseQuery;
       if (queryToExecute.source.type === "collection") {
-        baseQuery = collection(db, queryToExecute.source.path);
+        baseQuery = collection(firestoreDb, queryToExecute.source.path);
       } else {
-        baseQuery = collectionGroup(db, queryToExecute.source.path);
+        baseQuery = collectionGroup(firestoreDb, queryToExecute.source.path);
       }
 
       // Create an array to hold query constraints
