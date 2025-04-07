@@ -702,7 +702,7 @@ export default function Dashboard() {
             <h2 className="text-lg font-semibold">Query Builder</h2>
           </div>
 
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-4 min-h-[calc(100vh-4rem)]">
             {isInitialLoading ? (
               <div className="space-y-6 p-4">
                 {/* Title and save button skeleton */}
@@ -714,55 +714,58 @@ export default function Dashboard() {
                   <Skeleton className="h-9 w-28" />
                 </div>
 
-                {/* Query form skeleton */}
-                <div className="space-y-4">
-                  {/* Source section skeleton */}
-                  <div className="space-y-2 border rounded-lg p-4">
-                    <Skeleton className="h-5 w-24" />
-                    <div className="flex space-x-4">
-                      <Skeleton className="h-10 w-36" />
-                      <Skeleton className="h-10 flex-1" />
-                    </div>
-                  </div>
-
-                  {/* Query options skeleton */}
-                  <div className="space-y-3 border rounded-lg p-4">
-                    <Skeleton className="h-5 w-32" />
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <Skeleton className="h-6 w-24" />
-                      <Skeleton className="h-6 w-24" />
-                      <Skeleton className="h-6 w-24" />
-                      <Skeleton className="h-6 w-24" />
-                      <Skeleton className="h-6 w-24" />
-                      <Skeleton className="h-6 w-24" />
-                    </div>
-                  </div>
-
-                  {/* Execute button skeleton */}
-                  <div className="flex justify-end">
-                    <Skeleton className="h-9 w-36" />
-                  </div>
-                </div>
-
-                {/* Results area skeleton */}
-                <div className="space-y-3">
-                  <Skeleton className="h-6 w-32" />
-                  <div className="border rounded-lg p-4">
-                    <div className="space-y-2">
-                      {/* Table header skeleton */}
-                      <div className="flex border-b pb-2">
-                        <Skeleton className="h-5 w-24 mr-4" />
-                        <Skeleton className="h-5 w-24 mr-4" />
-                        <Skeleton className="h-5 w-24" />
+                {/* Content in side-by-side layout for desktop */}
+                <div className="flex flex-col xl:flex-row gap-4">
+                  {/* Query form skeleton - left side */}
+                  <div className="w-full xl:w-3/5 space-y-4">
+                    {/* Source section skeleton */}
+                    <div className="space-y-2 border rounded-lg p-4">
+                      <Skeleton className="h-5 w-24" />
+                      <div className="flex space-x-4">
+                        <Skeleton className="h-10 w-36" />
+                        <Skeleton className="h-10 flex-1" />
                       </div>
-                      {/* Table rows skeleton */}
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex py-2">
-                          <Skeleton className="h-4 w-24 mr-4" />
-                          <Skeleton className="h-4 w-24 mr-4" />
-                          <Skeleton className="h-4 w-24" />
+                    </div>
+
+                    {/* Query options skeleton */}
+                    <div className="space-y-3 border rounded-lg p-4">
+                      <Skeleton className="h-5 w-32" />
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                      </div>
+                    </div>
+
+                    {/* Execute button skeleton */}
+                    <div className="flex justify-end">
+                      <Skeleton className="h-9 w-36" />
+                    </div>
+                  </div>
+
+                  {/* Results area skeleton - right side */}
+                  <div className="w-full xl:w-2/5 space-y-3">
+                    <Skeleton className="h-6 w-32" />
+                    <div className="border rounded-lg p-4">
+                      <div className="space-y-2">
+                        {/* Table header skeleton */}
+                        <div className="flex border-b pb-2">
+                          <Skeleton className="h-5 w-24 mr-4" />
+                          <Skeleton className="h-5 w-24 mr-4" />
+                          <Skeleton className="h-5 w-24" />
                         </div>
-                      ))}
+                        {/* Table rows skeleton */}
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex py-2">
+                            <Skeleton className="h-4 w-24 mr-4" />
+                            <Skeleton className="h-4 w-24 mr-4" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -821,20 +824,27 @@ export default function Dashboard() {
                   </Button>
                 </div>
 
-                {/* Query Form */}
-                <QueryForm
-                  query={currentQuery}
-                  onChange={handleQueryChange}
-                  onExecute={executeQuery}
-                  isLoading={isLoading}
-                />
+                {/* Content layout - switch to side-by-side on desktop */}
+                <div className="flex flex-col xl:flex-row gap-4">
+                  {/* Query Form - takes less space on desktop */}
+                  <div className="w-full xl:w-3/5">
+                    <QueryForm
+                      query={currentQuery}
+                      onChange={handleQueryChange}
+                      onExecute={executeQuery}
+                      isLoading={isLoading}
+                    />
+                  </div>
 
-                {/* Query Results */}
-                <QueryResults
-                  isLoading={isLoading}
-                  error={error}
-                  results={results}
-                />
+                  {/* Query Results - takes remaining space on desktop */}
+                  <div className="w-full xl:w-2/5">
+                    <QueryResults
+                      isLoading={isLoading}
+                      error={error}
+                      results={results}
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="h-full flex items-center justify-center">

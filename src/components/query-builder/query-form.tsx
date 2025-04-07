@@ -338,7 +338,7 @@ export function QueryForm({
   };
 
   return (
-    <div className="bg-white rounded-lg p-6">
+    <div className="bg-white rounded-lg p-6 h-full overflow-y-auto">
       <div className="space-y-6">
         <div className="space-y-4">
           <Label className="text-sm/[1.5rem] font-medium block">
@@ -540,9 +540,10 @@ export function QueryForm({
               </div>
 
               {query.constraints.orderBy.enabled && (
-                <div className="pl-6 flex space-x-2 max-w-xl mt-2">
+                <div className="flex items-center gap-4 pl-6 max-w-xl mt-2">
                   <Input
                     placeholder="Field"
+                    className="max-w-xs"
                     value={query.constraints.orderBy.field}
                     onChange={(e) =>
                       updateQuery((q) => ({
@@ -557,7 +558,7 @@ export function QueryForm({
                       }))
                     }
                   />
-                  <Select
+                  <RadioGroup
                     value={query.constraints.orderBy.direction}
                     onValueChange={(value) =>
                       updateQuery((q) => ({
@@ -571,15 +572,21 @@ export function QueryForm({
                         },
                       }))
                     }
+                    className="flex gap-4"
                   >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Direction" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="asc">Ascending</SelectItem>
-                      <SelectItem value="desc">Descending</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="asc" id="order-asc" />
+                      <Label htmlFor="order-asc" className="font-normal">
+                        Asc
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="desc" id="order-desc" />
+                      <Label htmlFor="order-desc" className="font-normal">
+                        Desc
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
               )}
             </div>
