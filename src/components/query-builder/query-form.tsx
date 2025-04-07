@@ -97,6 +97,47 @@ export function QueryForm({
           valueType: value as ValueType,
           value: newValue,
         };
+      } else if (key === "value") {
+        // Auto-detect value type based on input
+        const inputValue = value as string;
+        let detectedType: ValueType = newClauses[index].valueType;
+
+        // Check for null
+        if (inputValue === "null") {
+          detectedType = "null";
+        }
+        // Check for boolean
+        else if (inputValue === "true" || inputValue === "false") {
+          detectedType = "boolean";
+        }
+        // Check for number - if it's a valid number and doesn't start with unnecessary zeros
+        else if (
+          !isNaN(Number(inputValue)) &&
+          (inputValue === "" ||
+            (!/^0[0-9]+/.test(inputValue) && /^-?\d*\.?\d*$/.test(inputValue)))
+        ) {
+          detectedType = "number";
+        }
+        // Check for date/timestamp - test for ISO format or common date formats
+        else if (
+          /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d{1,3})?([+-]\d{2}:?\d{2}|Z)?)?$/.test(
+            inputValue
+          ) &&
+          !isNaN(new Date(inputValue).getTime())
+        ) {
+          detectedType = "timestamp";
+        }
+        // Default to string for everything else
+        else {
+          detectedType = "string";
+        }
+
+        newClauses[index] = {
+          ...newClauses[index],
+          value: inputValue,
+          // Only update valueType if it's detected as something different
+          valueType: detectedType,
+        };
       } else {
         newClauses[index] = {
           ...newClauses[index],
@@ -396,14 +437,14 @@ export function QueryForm({
 
         {/* Query Options */}
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex gap-1">
             <h3 className="text-sm/[1.5rem] font-medium ">Query Options</h3>
             {hasEnabledOptions() && (
               <Button
                 variant="ghost"
-                size="sm"
+                size="xs"
                 onClick={resetOptions}
-                className="flex h-6 px-2 text-xs items-center gap-1 text-gray-500 hover:text-gray-700"
+                className="flex gap-1 text-gray-500 hover:text-gray-700"
               >
                 <RotateCcw className="h-3 w-3" />
                 Reset
@@ -786,6 +827,7 @@ export function QueryForm({
         {/* Execute Query Button */}
         <div className="pt-4">
           <Button
+            size="sm"
             variant="default"
             onClick={() => onExecute(query)}
             disabled={isLoading}
