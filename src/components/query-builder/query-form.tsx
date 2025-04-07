@@ -79,6 +79,12 @@ export function QueryForm({
           newValue = currentValue === "true" ? "true" : "false";
         } else if (value === "null") {
           newValue = "null";
+
+          // Reset operator to equality if it's currently a relational operator
+          const currentOperator = newClauses[index].operator;
+          if (["<", "<=", ">", ">="].includes(currentOperator)) {
+            newClauses[index].operator = "==" as WhereOperator;
+          }
         } else if (value === "timestamp") {
           // Default to current timestamp if empty or invalid
           if (!currentValue || isNaN(new Date(currentValue).getTime())) {
@@ -105,6 +111,12 @@ export function QueryForm({
         // Check for null
         if (inputValue === "null") {
           detectedType = "null";
+
+          // Reset operator to equality if it's currently a relational operator
+          const currentOperator = newClauses[index].operator;
+          if (["<", "<=", ">", ">="].includes(currentOperator)) {
+            newClauses[index].operator = "==" as WhereOperator;
+          }
         }
         // Check for boolean
         else if (inputValue === "true" || inputValue === "false") {
@@ -138,10 +150,24 @@ export function QueryForm({
           // Only update valueType if it's detected as something different
           valueType: detectedType,
         };
+      } else if (key === "operator") {
+        // If setting a relational operator but the valueType is null, prevent it
+        if (
+          ["<", "<=", ">", ">="].includes(value as string) &&
+          newClauses[index].valueType === "null"
+        ) {
+          // Don't change the operator
+          return q;
+        }
+
+        newClauses[index] = {
+          ...newClauses[index],
+          operator: value as WhereOperator,
+        };
       } else {
         newClauses[index] = {
           ...newClauses[index],
-          [key]: key === "operator" ? (value as WhereOperator) : value,
+          [key]: value,
         };
       }
 
@@ -494,10 +520,14 @@ export function QueryForm({
                           <SelectContent>
                             <SelectItem value="==">==</SelectItem>
                             <SelectItem value="!=">!=</SelectItem>
-                            <SelectItem value="<">&lt;</SelectItem>
-                            <SelectItem value="<=">&lt;=</SelectItem>
-                            <SelectItem value=">">&gt;</SelectItem>
-                            <SelectItem value=">=">&gt;=</SelectItem>
+                            {clause.valueType !== "null" && (
+                              <>
+                                <SelectItem value="<">&lt;</SelectItem>
+                                <SelectItem value="<=">&lt;=</SelectItem>
+                                <SelectItem value=">">&gt;</SelectItem>
+                                <SelectItem value=">=">&gt;=</SelectItem>
+                              </>
+                            )}
                             <SelectItem value="array-contains">
                               array-contains
                             </SelectItem>

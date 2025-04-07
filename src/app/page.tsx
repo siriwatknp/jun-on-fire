@@ -324,6 +324,16 @@ export default function Dashboard() {
         queryToExecute.constraints.where.clauses.forEach(
           (clause: WhereClause) => {
             if (clause.field && clause.value !== undefined) {
+              // Validate null usage with operators - prevent invalid combinations
+              if (
+                clause.valueType === "null" &&
+                ["<", "<=", ">", ">="].includes(clause.operator)
+              ) {
+                throw new Error(
+                  `Invalid operator "${clause.operator}" with null value. Use "==" or "!=" instead.`
+                );
+              }
+
               // Parse value based on its type
               let parsedValue;
 
