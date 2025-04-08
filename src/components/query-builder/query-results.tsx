@@ -11,6 +11,17 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
   Table,
   TableBody,
   TableCell,
@@ -19,7 +30,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { TableIcon, BracketsIcon } from "lucide-react";
+import { TableIcon, BracketsIcon, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { DataTableColumnHeader } from "./data-table-column-header";
+import { DataTableViewOptions } from "./data-table-view-options";
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -41,6 +55,12 @@ export function QueryResults({
   entityType = "post", // Default to post if not specified
 }: QueryResultsProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    path: false, // Hide path column by default
+  });
+  const [globalFilter, setGlobalFilter] = useState("");
 
   // Helper function to format all date objects with Bangkok timezone
   const formatDatesInObject = (
@@ -125,16 +145,6 @@ export function QueryResults({
     }
   }, [results]);
 
-  // Get all unique columns from the results
-  const columns = useMemo(() => {
-    if (!processedResults || processedResults.length === 0) return [];
-    const columnSet = new Set<string>();
-    processedResults.forEach((result) => {
-      Object.keys(result).forEach((key) => columnSet.add(key));
-    });
-    return Array.from(columnSet);
-  }, [processedResults]);
-
   // Format cell value for display
   const formatCellValue = (value: unknown): string => {
     if (value === null) return "null";
@@ -142,6 +152,45 @@ export function QueryResults({
     if (typeof value === "object") return JSON.stringify(value);
     return String(value);
   };
+
+  // Define columns for the table
+  const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
+    if (!processedResults || processedResults.length === 0) return [];
+
+    // Get all unique keys from the results
+    const keys = new Set<string>();
+    processedResults.forEach((result) => {
+      Object.keys(result).forEach((key) => keys.add(key));
+    });
+
+    // Create columns for each key
+    return Array.from(keys).map((key) => ({
+      accessorKey: key,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={key} />
+      ),
+      cell: ({ row }) => formatCellValue(row.getValue(key)),
+    }));
+  }, [processedResults]);
+
+  // Initialize the table
+  const table = useReactTable({
+    data: processedResults || [],
+    columns,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      globalFilter,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   if (isLoading) {
     return (
@@ -178,29 +227,45 @@ export function QueryResults({
             </span>
           )}
         </h3>
-        <ToggleGroup
-          type="single"
-          value={viewMode}
-          onValueChange={(value: string) =>
-            value && setViewMode(value as ViewMode)
-          }
-          className="p-0 bg-transparent"
-        >
-          <ToggleGroupItem
-            value="table"
-            aria-label="Table view"
-            className="data-[state=on]:bg-gray-100 data-[state=on]:text-gray-900"
+        <div className="flex items-center gap-2">
+          {viewMode === "table" && (
+            <>
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search all columns..."
+                  value={globalFilter ?? ""}
+                  onChange={(event) => setGlobalFilter(event.target.value)}
+                  className="h-8 w-[150px] lg:w-[250px]"
+                />
+              </div>
+              <DataTableViewOptions table={table} />
+            </>
+          )}
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value: string) =>
+              value && setViewMode(value as ViewMode)
+            }
+            className="border p-[3px] h-auto bg-transparent rounded-md"
           >
-            <TableIcon className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="json"
-            aria-label="JSON view"
-            className="data-[state=on]:bg-gray-100 data-[state=on]:text-gray-900"
-          >
-            <BracketsIcon className="h-4 w-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+            <ToggleGroupItem
+              value="table"
+              aria-label="Table view"
+              className="data-[state=on]:bg-gray-200 data-[state=on]:text-gray-900 rounded"
+            >
+              <TableIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="json"
+              aria-label="JSON view"
+              className="data-[state=on]:bg-gray-200 data-[state=on]:text-gray-900 rounded"
+            >
+              <BracketsIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
       <div className="border rounded overflow-auto flex-1">
         {results.length > 0 ? (
@@ -208,22 +273,45 @@ export function QueryResults({
             <div className="min-w-full">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    {columns.map((column) => (
-                      <TableHead key={column}>{column}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {processedResults?.map((row, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                      {columns.map((column) => (
-                        <TableCell key={`${rowIndex}-${column}`}>
-                          {formatCellValue(row[column])}
-                        </TableCell>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
                       ))}
                     </TableRow>
                   ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="h-24 text-center"
+                      >
+                        No results.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
