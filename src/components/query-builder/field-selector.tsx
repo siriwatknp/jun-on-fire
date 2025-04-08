@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import {
   getAllFields,
   getFieldsByType,
-  fieldMetadata,
   SchemaDefinition,
   FieldMetadata,
 } from "@/schema";
@@ -68,8 +67,7 @@ export function FieldSelector({
           <datalist id="field-options">
             {availableFields.map((field) => (
               <option key={field} value={field}>
-                {fieldMetadata[entityType as string]?.[field]?.displayName ||
-                  field}
+                {field}
               </option>
             ))}
           </datalist>
@@ -87,7 +85,7 @@ export function FieldSelector({
       <SelectContent>
         {availableFields.map((field) => (
           <SelectItem key={field} value={field}>
-            {fieldMetadata[entityType as string]?.[field]?.displayName || field}
+            {field}
           </SelectItem>
         ))}
       </SelectContent>

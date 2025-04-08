@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { PlusCircle, Trash2, Play, RotateCcw, Plus } from "lucide-react";
+import { fieldMetadata } from "@/schema";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +26,7 @@ import {
   OrderDirection,
   ValueType,
 } from "./types";
+import { FieldSuggestions } from "./field-suggestions";
 
 export function QueryForm({
   query,
@@ -32,6 +34,38 @@ export function QueryForm({
   onExecute,
   isLoading = false,
 }: QueryFormProps) {
+  // Helper function to extract entity type from path
+  const getEntityTypeFromPath = (
+    path: string,
+    queryType: QueryType
+  ): string | null => {
+    if (!path) return null;
+
+    // For collection group, the path is just the collection name (e.g., "posts")
+    if (queryType === "collectionGroup") {
+      // Remove trailing 's' to get entity type (e.g., "posts" -> "post")
+      const entityType = path.endsWith("s") ? path.slice(0, -1) : path;
+      return fieldMetadata[entityType] ? entityType : null;
+    }
+
+    // For collection, extract the last segment of the path (e.g., "users/user123/posts" -> "posts")
+    if (queryType === "collection") {
+      const segments = path.split("/");
+      const lastSegment = segments[segments.length - 1];
+      const entityType = lastSegment.endsWith("s")
+        ? lastSegment.slice(0, -1)
+        : lastSegment;
+      return fieldMetadata[entityType] ? entityType : null;
+    }
+
+    return null;
+  };
+
+  // Determine the current entity type based on the path
+  const currentEntityType = useMemo(() => {
+    return getEntityTypeFromPath(query.source.path, query.source.type);
+  }, [query.source.path, query.source.type]);
+
   // Helper function to update the query
   const updateQuery = (updater: (query: QueryState) => QueryState) => {
     const updatedQuery = updater({
@@ -436,7 +470,7 @@ export function QueryForm({
                 </Label>
               </div>
             </RadioGroup>
-            {/* Path Input */}
+            {/* Path Input - revert to standard Input */}
             <div className="space-y-3">
               <Label htmlFor="path" className="text-sm font-medium">
                 Path
@@ -457,6 +491,23 @@ export function QueryForm({
                     : "posts"
                 }
               />
+              {query.source.path &&
+              getEntityTypeFromPath(query.source.path, query.source.type) ? (
+                <p className="text-xs text-green-600 mt-1">
+                  ✓ Found schema for entity type &quot;{currentEntityType}&quot;
+                  - field suggestions enabled
+                </p>
+              ) : query.source.path ? (
+                <p className="text-xs text-amber-600 mt-1">
+                  ⚠ No schema found for this path - field suggestions
+                  unavailable
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter a path to enable field suggestions (e.g.,
+                  &quot;posts&quot; or &quot;users/user123/posts&quot;)
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -497,12 +548,13 @@ export function QueryForm({
                   <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2">
                     {query.constraints.where.clauses.map((clause, index) => (
                       <React.Fragment key={index}>
-                        <Input
+                        <FieldSuggestions
                           placeholder="Field"
                           value={clause.field}
-                          onChange={(e) =>
-                            updateWhereClause(index, "field", e.target.value)
+                          onChange={(value) =>
+                            updateWhereClause(index, "field", value)
                           }
+                          entityType={currentEntityType}
                         />
                         <Select
                           value={clause.operator}
@@ -612,22 +664,23 @@ export function QueryForm({
 
               {query.constraints.orderBy.enabled && (
                 <div className="flex items-center gap-4 pl-6 max-w-xl mt-2">
-                  <Input
+                  <FieldSuggestions
                     placeholder="Field"
                     className="max-w-xs"
                     value={query.constraints.orderBy.field}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       updateQuery((q) => ({
                         ...q,
                         constraints: {
                           ...q.constraints,
                           orderBy: {
                             ...q.constraints.orderBy,
-                            field: e.target.value,
+                            field: value,
                           },
                         },
                       }))
                     }
+                    entityType={currentEntityType}
                   />
                   <RadioGroup
                     value={query.constraints.orderBy.direction}
@@ -732,12 +785,11 @@ export function QueryForm({
                           key={index}
                           className="flex items-center space-x-2"
                         >
-                          <Input
+                          <FieldSuggestions
                             placeholder="Field to sum"
                             value={field}
-                            onChange={(e) =>
-                              updateSumField(index, e.target.value)
-                            }
+                            onChange={(value) => updateSumField(index, value)}
+                            entityType={currentEntityType}
                             className="flex-1"
                           />
                           {query.aggregation.sum.fields.length > 1 && (
@@ -801,12 +853,13 @@ export function QueryForm({
                           key={index}
                           className="flex items-center space-x-2"
                         >
-                          <Input
+                          <FieldSuggestions
                             placeholder="Field to average"
                             value={field}
-                            onChange={(e) =>
-                              updateAverageField(index, e.target.value)
+                            onChange={(value) =>
+                              updateAverageField(index, value)
                             }
+                            entityType={currentEntityType}
                             className="flex-1"
                           />
                           {query.aggregation.average.fields.length > 1 && (

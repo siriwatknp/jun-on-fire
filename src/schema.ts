@@ -55,8 +55,6 @@ export interface FieldMetadata {
     | "array"
     | "map"
     | "null";
-  displayName: string;
-  description?: string;
   isNullable?: boolean;
 }
 
@@ -67,19 +65,13 @@ export const fieldMetadata: Record<string, Record<string, FieldMetadata>> = {
   post: {
     title: {
       type: "string",
-      displayName: "Title",
-      description: "The title of the post",
       isNullable: true,
     },
     number: {
       type: "number",
-      displayName: "Number",
-      description: "A numeric value associated with the post",
     },
     createdAt: {
       type: "timestamp",
-      displayName: "Created At",
-      description: "When the post was created",
     },
   },
 };
