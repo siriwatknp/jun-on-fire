@@ -61,6 +61,31 @@ export function QueryForm({
     return null;
   };
 
+  // Helper function to get field type from metadata
+  const getFieldTypeFromMetadata = (
+    fieldName: string,
+    entityType: string | null
+  ): ValueType => {
+    if (!entityType || !fieldName) return "string";
+
+    const entityMetadata = fieldMetadata[entityType];
+    if (!entityMetadata || !entityMetadata[fieldName]) return "string";
+
+    const fieldType = entityMetadata[fieldName].type;
+
+    // Map schema type to ValueType
+    if (
+      fieldType === "number" ||
+      fieldType === "boolean" ||
+      fieldType === "timestamp" ||
+      fieldType === "null"
+    ) {
+      return fieldType as ValueType;
+    }
+
+    return "string";
+  };
+
   // Determine the current entity type based on the path
   const currentEntityType = useMemo(() => {
     return getEntityTypeFromPath(query.source.path, query.source.type);
@@ -136,6 +161,52 @@ export function QueryForm({
           ...newClauses[index],
           valueType: value as ValueType,
           value: newValue,
+        };
+      } else if (key === "field") {
+        // Auto-update valueType based on schema metadata when field is selected
+        if (currentEntityType && value) {
+          const fieldName = value as string;
+          const valueType = getFieldTypeFromMetadata(
+            fieldName,
+            currentEntityType
+          );
+
+          // Apply the detected type
+          newClauses[index] = {
+            ...newClauses[index],
+            field: fieldName,
+            valueType: valueType,
+            // If the type changed, update the value too for consistency
+            value:
+              valueType === newClauses[index].valueType
+                ? newClauses[index].value
+                : "",
+          };
+
+          // Reset operator to equality if it's null with relational operator
+          if (
+            valueType === "null" &&
+            ["<", "<=", ">", ">="].includes(newClauses[index].operator)
+          ) {
+            newClauses[index].operator = "==" as WhereOperator;
+          }
+
+          return {
+            ...q,
+            constraints: {
+              ...q.constraints,
+              where: {
+                ...q.constraints.where,
+                clauses: newClauses,
+              },
+            },
+          };
+        }
+
+        // If no type found in schema, just update the field name normally
+        newClauses[index] = {
+          ...newClauses[index],
+          [key]: value,
         };
       } else if (key === "value") {
         // Auto-detect value type based on input
@@ -300,6 +371,20 @@ export function QueryForm({
   const updateSumField = (index: number, value: string) => {
     updateQuery((q) => {
       const newFields = [...q.aggregation.sum.fields];
+
+      // For numeric aggregations, validate that the field has a number type
+      if (value && currentEntityType) {
+        const fieldType = getFieldTypeFromMetadata(value, currentEntityType);
+
+        // Display a warning or provide visual feedback if the field isn't a number
+        if (fieldType !== "number") {
+          console.warn(
+            `Field '${value}' might not be a numeric field. Sum operation may not work as expected.`
+          );
+          // We still allow it, as Firestore might convert the field
+        }
+      }
+
       newFields[index] = value;
       return {
         ...q,
@@ -346,6 +431,20 @@ export function QueryForm({
   const updateAverageField = (index: number, value: string) => {
     updateQuery((q) => {
       const newFields = [...q.aggregation.average.fields];
+
+      // For numeric aggregations, validate that the field has a number type
+      if (value && currentEntityType) {
+        const fieldType = getFieldTypeFromMetadata(value, currentEntityType);
+
+        // Display a warning or provide visual feedback if the field isn't a number
+        if (fieldType !== "number") {
+          console.warn(
+            `Field '${value}' might not be a numeric field. Average operation may not work as expected.`
+          );
+          // We still allow it, as Firestore might convert the field
+        }
+      }
+
       newFields[index] = value;
       return {
         ...q,
@@ -439,7 +538,7 @@ export function QueryForm({
   };
 
   return (
-    <div className="bg-white rounded-lg p-6 h-full overflow-y-auto">
+    <div className="bg-white pl-2 rounded-lg h-full overflow-y-auto">
       <div className="space-y-6">
         <div className="space-y-4">
           <Label className="text-sm/[1.5rem] font-medium block">
@@ -493,17 +592,17 @@ export function QueryForm({
               />
               {query.source.path &&
               getEntityTypeFromPath(query.source.path, query.source.type) ? (
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-green-600">
                   ✓ Found schema for entity type &quot;{currentEntityType}&quot;
                   - field suggestions enabled
                 </p>
               ) : query.source.path ? (
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-xs text-amber-600">
                   ⚠ No schema found for this path - field suggestions
                   unavailable
                 </p>
               ) : (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500">
                   Enter a path to enable field suggestions (e.g.,
                   &quot;posts&quot; or &quot;users/user123/posts&quot;)
                 </p>
@@ -668,7 +767,23 @@ export function QueryForm({
                     placeholder="Field"
                     className="max-w-xs"
                     value={query.constraints.orderBy.field}
-                    onChange={(value) =>
+                    onChange={(value) => {
+                      // Get field type from metadata for validation
+                      if (currentEntityType && value) {
+                        const fieldMetadataType =
+                          fieldMetadata[currentEntityType]?.[value]?.type;
+
+                        // For orderBy, we allow all field types but could add validation for specific cases
+                        if (
+                          fieldMetadataType === "array" ||
+                          fieldMetadataType === "map"
+                        ) {
+                          console.warn(
+                            `Field '${value}' is of type ${fieldMetadataType} which might not be sortable directly.`
+                          );
+                        }
+                      }
+
                       updateQuery((q) => ({
                         ...q,
                         constraints: {
@@ -678,8 +793,8 @@ export function QueryForm({
                             field: value,
                           },
                         },
-                      }))
-                    }
+                      }));
+                    }}
                     entityType={currentEntityType}
                   />
                   <RadioGroup
