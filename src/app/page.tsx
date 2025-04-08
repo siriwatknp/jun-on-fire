@@ -814,7 +814,7 @@ export default function Dashboard() {
                 {/* Content in side-by-side layout for desktop */}
                 <div className="flex flex-col xl:flex-row gap-4">
                   {/* Query form skeleton - left side */}
-                  <div className="w-full xl:w-3/5 space-y-4">
+                  <div className="w-full space-y-4">
                     {/* Source section skeleton */}
                     <div className="space-y-2 border rounded-lg p-4">
                       <Skeleton className="h-5 w-24" />
@@ -844,7 +844,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Results area skeleton - right side */}
-                  <div className="w-full xl:w-2/5 space-y-3">
+                  <div className="w-full space-y-3">
                     <Skeleton className="h-6 w-32" />
                     <div className="border rounded-lg p-4">
                       <div className="space-y-2">
@@ -924,17 +924,15 @@ export default function Dashboard() {
                 {/* Content layout - switch to side-by-side on desktop */}
                 <div className="flex flex-col xl:flex-row gap-4">
                   {/* Query Form - takes less space on desktop */}
-                  <div className="w-full xl:w-3/5">
-                    <QueryForm
-                      query={currentQuery}
-                      onChange={handleQueryChange}
-                      onExecute={executeQuery}
-                      isLoading={isLoading}
-                    />
-                  </div>
+                  <QueryForm
+                    query={currentQuery}
+                    onChange={handleQueryChange}
+                    onExecute={executeQuery}
+                    isLoading={isLoading}
+                  />
 
                   {/* Query Results - takes remaining space on desktop */}
-                  <div className="w-full xl:w-2/5">
+                  <div className="grow">
                     <QueryResults
                       isLoading={isLoading}
                       error={error}

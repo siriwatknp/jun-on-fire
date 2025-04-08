@@ -576,7 +576,7 @@ export function QueryForm({
               </Label>
               <Input
                 id="path"
-                className="max-w-lg"
+                className="max-w-md"
                 value={query.source.path}
                 onChange={(e) =>
                   updateQuery((q) => ({
@@ -643,8 +643,8 @@ export function QueryForm({
               </div>
 
               {query.constraints.where.enabled && (
-                <div className="pl-6 space-y-3 max-w-3xl mt-2">
-                  <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2">
+                <div className="pl-6 space-y-3 max-w-md mt-2">
+                  <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
                     {query.constraints.where.clauses.map((clause, index) => (
                       <React.Fragment key={index}>
                         <FieldSuggestions
@@ -690,6 +690,7 @@ export function QueryForm({
                           </SelectContent>
                         </Select>
                         <Input
+                          className="[grid-column:1]"
                           placeholder="Value"
                           value={clause.value}
                           onChange={(e) =>
