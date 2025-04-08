@@ -34,6 +34,7 @@ import { TableIcon, BracketsIcon, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableViewOptions } from "./data-table-view-options";
+import { toast } from "sonner";
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -146,9 +147,30 @@ export function QueryResults({
   }, [results]);
 
   // Format cell value for display
-  const formatCellValue = (value: unknown): string => {
-    if (value === null) return "null";
+  const formatCellValue = (value: unknown, key: string): React.ReactNode => {
+    if (value === null) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+          null
+        </span>
+      );
+    }
     if (value === undefined) return "";
+    if (key === "id") {
+      const fullId = String(value);
+      return (
+        <span
+          className="cursor-pointer hover:text-gray-600"
+          onClick={() => {
+            navigator.clipboard.writeText(fullId);
+            toast.success("ID copied to clipboard");
+          }}
+          title={`Double click to copy: ${fullId}`}
+        >
+          {fullId.slice(0, 5)}...
+        </span>
+      );
+    }
     if (typeof value === "object") return JSON.stringify(value);
     return String(value);
   };
@@ -169,7 +191,7 @@ export function QueryResults({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={key} />
       ),
-      cell: ({ row }) => formatCellValue(row.getValue(key)),
+      cell: ({ row }) => formatCellValue(row.getValue(key), key),
     }));
   }, [processedResults]);
 
