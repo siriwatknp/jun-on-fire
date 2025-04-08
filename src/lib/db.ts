@@ -11,6 +11,11 @@ export class AppDatabase extends Dexie {
     this.version(1).stores({
       queries: "id, title, updatedAt", // Primary key is id, and we index title and updatedAt
     });
+
+    // Add favorite field to version 2
+    this.version(2).stores({
+      queries: "id, title, updatedAt, favorite", // Added favorite as an indexed field
+    });
   }
 }
 

@@ -8,7 +8,7 @@ import {
   PlusCircle,
   Pencil,
   Check,
-  Loader2,
+  Heart,
 } from "lucide-react";
 import {
   collection,
@@ -29,11 +29,9 @@ import {
 import { db as firestoreDb } from "@/lib/firebase";
 import { Toaster, toast } from "sonner";
 import {
-  db as appDb,
   getAllQueries,
   saveQuery as saveQueryToDb,
   deleteQuery as deleteQueryFromDb,
-  getLatestQuery,
 } from "@/lib/db";
 
 import { Button } from "@/components/ui/button";
@@ -236,7 +234,7 @@ export default function Dashboard() {
       // If the deleted query was active, clear the active query
       if (activeQueryId === id) {
         setActiveQueryId(null);
-        setCurrentQuery(null as any); // Clear current query
+        setCurrentQuery(createDefaultQuery()); // Use default query instead of null
         setResults(null);
         setError(null);
       }
@@ -346,7 +344,7 @@ export default function Dashboard() {
                   let parsedItems;
                   try {
                     parsedItems = JSON.parse(clause.value);
-                  } catch (e) {
+                  } catch {
                     // If not valid JSON, treat as a comma-separated list
                     parsedItems = clause.value
                       .split(",")
@@ -366,7 +364,7 @@ export default function Dashboard() {
                       item === "true" || item === true ? true : false
                     );
                   } else if (clause.valueType === "null") {
-                    parsedValue = arrayValue.map((item) => null);
+                    parsedValue = arrayValue.map(() => null);
                   } else if (clause.valueType === "timestamp") {
                     try {
                       parsedValue = arrayValue.map((item) => {
@@ -537,7 +535,11 @@ export default function Dashboard() {
         const aggregateData = aggregateSnapshot.data();
 
         // Format the results
-        const formattedResults: any = {};
+        const formattedResults: {
+          count?: number | null;
+          sum?: Record<string, number | null>;
+          average?: Record<string, number | null>;
+        } = {};
 
         // Add count if enabled
         if (queryToExecute.aggregation.count.enabled) {
@@ -548,7 +550,9 @@ export default function Dashboard() {
         if (queryToExecute.aggregation.sum.enabled) {
           formattedResults.sum = {};
           queryToExecute.aggregation.sum.fields.forEach((field) => {
-            formattedResults.sum[field] = aggregateData[`sum_${field}`];
+            if (formattedResults.sum) {
+              formattedResults.sum[field] = aggregateData[`sum_${field}`];
+            }
           });
         }
 
@@ -556,7 +560,9 @@ export default function Dashboard() {
         if (queryToExecute.aggregation.average.enabled) {
           formattedResults.average = {};
           queryToExecute.aggregation.average.fields.forEach((field) => {
-            formattedResults.average[field] = aggregateData[`avg_${field}`];
+            if (formattedResults.average) {
+              formattedResults.average[field] = aggregateData[`avg_${field}`];
+            }
           });
         }
 
@@ -589,6 +595,48 @@ export default function Dashboard() {
       toast.error(errorMessage); // Also show a toast notification
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to toggle favorite status of a query
+  const toggleFavorite = async (queryId: string, event: React.MouseEvent) => {
+    // Prevent event propagation to avoid triggering the query selection
+    event.stopPropagation();
+
+    try {
+      // Find the query
+      const query = savedQueries.find((q) => q.id === queryId);
+      if (!query) return;
+
+      // Update the query's favorite status
+      const updatedQuery = {
+        ...query,
+        favorite: !query.favorite,
+        updatedAt: Date.now(),
+      };
+
+      // Update in saved queries list
+      const updatedQueries = savedQueries.map((q) =>
+        q.id === queryId ? updatedQuery : q
+      );
+      setSavedQueries(updatedQueries);
+
+      // Update active query if this is the current one
+      if (activeQueryId === queryId) {
+        setCurrentQuery(updatedQuery);
+      }
+
+      // Save to database
+      await saveQueryToDb(updatedQuery);
+
+      toast.success(
+        updatedQuery.favorite
+          ? "Query added to favorites"
+          : "Query removed from favorites"
+      );
+    } catch (error) {
+      console.error("Error updating favorite status:", error);
+      toast.error("Failed to update favorite status");
     }
   };
 
@@ -644,7 +692,14 @@ export default function Dashboard() {
                 ) : (
                   <SidebarMenu>
                     {savedQueries
-                      .sort((a, b) => b.updatedAt - a.updatedAt)
+                      // Sort by favorite first, then by updatedAt
+                      .sort((a, b) => {
+                        // First sort by favorite status (favorite first)
+                        if (a.favorite && !b.favorite) return -1;
+                        if (!a.favorite && b.favorite) return 1;
+                        // Then sort by updatedAt for queries with the same favorite status
+                        return b.updatedAt - a.updatedAt;
+                      })
                       .map((query) => (
                         <SidebarMenuItem key={query.id}>
                           <SidebarMenuButton
@@ -652,8 +707,8 @@ export default function Dashboard() {
                             onClick={() => loadQuery(query)}
                             className="px-4 py-2 min-h-[60px]"
                           >
-                            <div className="flex flex-col items-start">
-                              <div className="flex items-center">
+                            <div className="flex flex-col items-start w-full">
+                              <div className="flex items-center w-full">
                                 <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
                                 <span className="truncate">{query.title}</span>
                               </div>
@@ -687,6 +742,38 @@ export default function Dashboard() {
                               </div>
                             </div>
                           </SidebarMenuButton>
+                          <SidebarMenuAction
+                            className="right-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(query.id, e);
+                            }}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              // Only handle double click if it's already favorited
+                              if (query.favorite) {
+                                toggleFavorite(query.id, e);
+                              }
+                            }}
+                            title={
+                              query.favorite
+                                ? "Double-click to unfavorite"
+                                : "Click to favorite"
+                            }
+                            aria-label={
+                              query.favorite
+                                ? "Favorited query"
+                                : "Add to favorites"
+                            }
+                          >
+                            <Heart
+                              className={`h-3 w-3 ${
+                                query.favorite
+                                  ? "fill-red-500 text-red-500"
+                                  : ""
+                              }`}
+                            />
+                          </SidebarMenuAction>
                           <SidebarMenuAction
                             onClick={(e) => {
                               e.stopPropagation();

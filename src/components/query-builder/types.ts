@@ -35,6 +35,7 @@ export interface QueryState {
   title: string;
   createdAt: number;
   updatedAt: number;
+  favorite: boolean;
 
   // Source configuration
   source: {
@@ -91,6 +92,7 @@ export const createDefaultQuery = (): QueryState => ({
   title: "New Query",
   createdAt: Date.now(),
   updatedAt: Date.now(),
+  favorite: false,
   source: {
     type: "collection",
     path: "",
