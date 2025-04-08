@@ -101,7 +101,7 @@ export function QueryResults({
             enabled: true,
             clauses: [
               {
-                field: "id",
+                field: "__name__",
                 operator: "==",
                 value: value,
                 valueType: "string",

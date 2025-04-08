@@ -9,6 +9,7 @@ import {
   Pencil,
   Check,
   Heart,
+  LogIn,
 } from "lucide-react";
 import {
   collection,
@@ -33,6 +34,10 @@ import {
   saveQuery as saveQueryToDb,
   deleteQuery as deleteQueryFromDb,
 } from "@/lib/db";
+import { User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { AuthDialog } from "@/components/auth/auth-dialog";
+import { UserMenu } from "@/components/auth/user-menu";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -85,6 +90,20 @@ export default function Dashboard() {
   // Saved queries management
   const [savedQueries, setSavedQueries] = useState<QueryState[]>([]);
   const [activeQueryId, setActiveQueryId] = useState<string | null>(null);
+
+  // Add auth state
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Listen to auth state changes
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Load saved queries from IndexedDB on component mount
   useEffect(() => {
@@ -794,9 +813,26 @@ export default function Dashboard() {
 
         {/* Main content area - direct sibling of Sidebar */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center p-4 border-b">
-            <SidebarTrigger className="mr-2" />
-            <h2 className="text-lg font-semibold">Query Builder</h2>
+          <div className="flex items-center justify-between px-4 py-2.5 border-b">
+            <div className="flex items-center">
+              <SidebarTrigger className="mr-2" />
+              <h2 className="text-lg font-semibold">Query Builder</h2>
+            </div>
+            {/* Auth UI */}
+            {!authLoading && (
+              <div>
+                {user ? (
+                  <UserMenu email={user.email || "User"} />
+                ) : (
+                  <AuthDialog>
+                    <Button variant="outline" size="sm">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Login
+                    </Button>
+                  </AuthDialog>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-auto p-4 min-h-[calc(100vh-4rem)]">
