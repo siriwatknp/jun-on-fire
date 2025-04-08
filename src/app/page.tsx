@@ -239,6 +239,9 @@ export default function Dashboard() {
     setResults(null);
     setActiveQueryId(query.id);
     setIsTitleEditing(false); // Cancel any ongoing title editing
+
+    // Execute the query automatically
+    executeQuery({ ...query });
   };
 
   // Delete a saved query
