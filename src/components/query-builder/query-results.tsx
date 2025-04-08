@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { DocumentData, Timestamp } from "firebase/firestore";
 import {
   fieldMetadata,
@@ -10,6 +10,16 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { TableIcon, BracketsIcon } from "lucide-react";
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -22,12 +32,16 @@ interface QueryResultsProps {
   entityType?: keyof SchemaDefinition | string;
 }
 
+type ViewMode = "table" | "json";
+
 export function QueryResults({
   isLoading,
   error,
   results,
   entityType = "post", // Default to post if not specified
 }: QueryResultsProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+
   // Helper function to format all date objects with Bangkok timezone
   const formatDatesInObject = (
     obj: Record<string, unknown>
@@ -111,6 +125,24 @@ export function QueryResults({
     }
   }, [results]);
 
+  // Get all unique columns from the results
+  const columns = useMemo(() => {
+    if (!processedResults || processedResults.length === 0) return [];
+    const columnSet = new Set<string>();
+    processedResults.forEach((result) => {
+      Object.keys(result).forEach((key) => columnSet.add(key));
+    });
+    return Array.from(columnSet);
+  }, [processedResults]);
+
+  // Format cell value for display
+  const formatCellValue = (value: unknown): string => {
+    if (value === null) return "null";
+    if (value === undefined) return "";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 border rounded bg-gray-50 h-full flex items-center justify-center">
@@ -146,12 +178,60 @@ export function QueryResults({
             </span>
           )}
         </h3>
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(value: string) =>
+            value && setViewMode(value as ViewMode)
+          }
+          className="p-0 bg-transparent"
+        >
+          <ToggleGroupItem
+            value="table"
+            aria-label="Table view"
+            className="data-[state=on]:bg-gray-100 data-[state=on]:text-gray-900"
+          >
+            <TableIcon className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="json"
+            aria-label="JSON view"
+            className="data-[state=on]:bg-gray-100 data-[state=on]:text-gray-900"
+          >
+            <BracketsIcon className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
       <div className="border rounded overflow-auto flex-1">
         {results.length > 0 ? (
-          <pre className="p-4 text-xs font-mono overflow-x-auto h-full">
-            {JSON.stringify(processedResults, null, 2)}
-          </pre>
+          viewMode === "table" ? (
+            <div className="min-w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {columns.map((column) => (
+                      <TableHead key={column}>{column}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {processedResults?.map((row, rowIndex) => (
+                    <TableRow key={rowIndex}>
+                      {columns.map((column) => (
+                        <TableCell key={`${rowIndex}-${column}`}>
+                          {formatCellValue(row[column])}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <pre className="p-4 text-xs font-mono overflow-x-auto h-full">
+              {JSON.stringify(processedResults, null, 2)}
+            </pre>
+          )
         ) : (
           <p className="p-4 text-center text-gray-500">No results found</p>
         )}

@@ -922,7 +922,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Content layout - switch to side-by-side on desktop */}
-                <div className="flex flex-col xl:flex-row gap-4">
+                <div className="flex flex-col xl:flex-row gap-10">
                   {/* Query Form - takes less space on desktop */}
                   <QueryForm
                     query={currentQuery}
