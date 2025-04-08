@@ -26,6 +26,7 @@ export interface SchemaEntityBase {
  * Schema definition for a Post entity
  */
 export interface PostSchema extends SchemaEntityBase {
+  author: string;
   title: string | null;
   number: number;
   createdAt: Timestamp; // Stored as Firebase Timestamp in the database
@@ -56,6 +57,10 @@ export interface FieldMetadata {
     | "map"
     | "null";
   isNullable?: boolean;
+  /**
+   * If present, the value is a document of this collection.
+   */
+  collectionRef?: string;
 }
 
 /**
@@ -63,6 +68,10 @@ export interface FieldMetadata {
  */
 export const fieldMetadata: Record<string, Record<string, FieldMetadata>> = {
   post: {
+    author: {
+      type: "string",
+      collectionRef: "users",
+    },
     title: {
       type: "string",
       isNullable: true,

@@ -937,6 +937,14 @@ export default function Dashboard() {
                       isLoading={isLoading}
                       error={error}
                       results={results}
+                      currentQuery={currentQuery}
+                      onSaveQuery={saveQuery}
+                      onCreateQuery={(query) => {
+                        setCurrentQuery(query);
+                        setActiveQueryId(query.id);
+                        setSavedQueries((prev) => [...prev, query]);
+                      }}
+                      onExecuteQuery={executeQuery}
                     />
                   </div>
                 </div>

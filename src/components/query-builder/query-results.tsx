@@ -29,12 +29,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { TableIcon, BracketsIcon, Search } from "lucide-react";
+import { TableIcon, BracketsIcon, Search, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableViewOptions } from "./data-table-view-options";
 import { toast } from "sonner";
+import { QueryState } from "./types";
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -45,6 +52,10 @@ interface QueryResultsProps {
   error?: string | null;
   results?: DocumentData[] | null;
   entityType?: keyof SchemaDefinition | string;
+  currentQuery: QueryState;
+  onSaveQuery: () => Promise<void>;
+  onCreateQuery: (query: QueryState) => void;
+  onExecuteQuery: (query: QueryState) => void;
 }
 
 type ViewMode = "table" | "json";
@@ -53,7 +64,11 @@ export function QueryResults({
   isLoading,
   error,
   results,
-  entityType = "post", // Default to post if not specified
+  entityType = "post",
+  currentQuery,
+  onSaveQuery,
+  onCreateQuery,
+  onExecuteQuery,
 }: QueryResultsProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -62,6 +77,72 @@ export function QueryResults({
     path: false, // Hide path column by default
   });
   const [globalFilter, setGlobalFilter] = useState("");
+
+  // Handle collection reference click
+  const handleCollectionRefClick = async (
+    collectionRef: string,
+    value: string
+  ) => {
+    try {
+      // Save the current query first
+      await onSaveQuery();
+
+      // Create a new query targeting the referenced collection
+      const newQuery: QueryState = {
+        ...currentQuery,
+        id: crypto.randomUUID(),
+        title: `Query ${collectionRef} (${value})`,
+        source: {
+          type: "collection",
+          path: collectionRef,
+        },
+        constraints: {
+          where: {
+            enabled: true,
+            clauses: [
+              {
+                field: "id",
+                operator: "==",
+                value: value,
+                valueType: "string",
+              },
+            ],
+          },
+          orderBy: {
+            enabled: false,
+            field: "",
+            direction: "asc",
+          },
+          limit: {
+            enabled: false,
+            value: null,
+          },
+        },
+        aggregation: {
+          count: {
+            enabled: false,
+          },
+          sum: {
+            enabled: false,
+            fields: [],
+          },
+          average: {
+            enabled: false,
+            fields: [],
+          },
+        },
+        updatedAt: Date.now(),
+      };
+
+      // Create and execute the new query
+      onCreateQuery(newQuery);
+      onExecuteQuery(newQuery);
+      toast.success(`Created new query for ${collectionRef}`);
+    } catch (error) {
+      console.error("Error handling collection reference click:", error);
+      toast.error("Failed to create new query");
+    }
+  };
 
   // Helper function to format all date objects with Bangkok timezone
   const formatDatesInObject = (
@@ -156,12 +237,53 @@ export function QueryResults({
       );
     }
     if (value === undefined) return "";
+
+    // Check if this field has a collection reference
+    const fieldMeta = entityType && fieldMetadata[entityType]?.[key];
+    if (
+      fieldMeta &&
+      typeof fieldMeta !== "string" &&
+      typeof fieldMeta.collectionRef === "string" &&
+      fieldMeta.collectionRef
+    ) {
+      const collectionRef = fieldMeta.collectionRef;
+      const fullValue = String(value);
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                onClick={() =>
+                  handleCollectionRefClick(collectionRef, fullValue)
+                }
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(fullValue);
+                  toast.success("Reference ID copied to clipboard");
+                }}
+              >
+                {fullValue.length > 5
+                  ? `${fullValue.slice(0, 5)}...`
+                  : fullValue}
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[300px] space-y-1 px-2">
+              <p className="font-medium">{collectionRef}</p>
+              <p className="text-xs text-gray-300">ID: {fullValue}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
     if (key === "id") {
       const fullId = String(value);
       return (
         <span
           className="cursor-pointer hover:text-gray-600"
-          onClick={() => {
+          onDoubleClick={() => {
             navigator.clipboard.writeText(fullId);
             toast.success("ID copied to clipboard");
           }}
