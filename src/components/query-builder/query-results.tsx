@@ -562,13 +562,20 @@ export function QueryResults({
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-medium">
-          Results ({results.length})
-          {resultSize && (
-            <span className="ml-2 text-xs inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600 font-normal">
-              size: {resultSize}
+        <h3 className="font-medium flex items-center gap-2">
+          Results
+          <div className="flex items-center gap-1.5">
+            {/* Documents count chip */}
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600 font-normal">
+              {results.length} {results.length === 1 ? "doc" : "docs"}
             </span>
-          )}
+            {/* Size chip */}
+            {resultSize && (
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600 font-normal">
+                size: {resultSize}
+              </span>
+            )}
+          </div>
         </h3>
         <div className="flex items-center gap-2">
           {viewMode === "table" && (
