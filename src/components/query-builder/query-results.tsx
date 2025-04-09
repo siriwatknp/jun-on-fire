@@ -36,12 +36,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { TableIcon, BracketsIcon, Search, ExternalLink } from "lucide-react";
+import { TableIcon, BracketsIcon, Search, ExternalLink, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableViewOptions } from "./data-table-view-options";
 import { toast } from "sonner";
 import { QueryState } from "./types";
+import * as Drawer from "vaul";
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -77,6 +78,11 @@ export function QueryResults({
     path: false, // Hide path column by default
   });
   const [globalFilter, setGlobalFilter] = useState("");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedObject, setSelectedObject] = useState<{
+    value: unknown;
+    field: string;
+  } | null>(null);
 
   // Handle collection reference click
   const handleCollectionRefClick = async (
@@ -238,6 +244,22 @@ export function QueryResults({
     }
     if (value === undefined) return "";
 
+    // Handle object values (including arrays)
+    if (typeof value === "object" && value !== null) {
+      return (
+        <button
+          onClick={() => {
+            setSelectedObject({ value, field: key });
+            setIsDrawerOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+        >
+          object
+          <Search className="h-3 w-3" />
+        </button>
+      );
+    }
+
     // Check if this field has a collection reference
     const fieldMeta = entityType && fieldMetadata[entityType]?.[key];
     if (
@@ -293,7 +315,6 @@ export function QueryResults({
         </span>
       );
     }
-    if (typeof value === "object") return JSON.stringify(value);
     return String(value);
   };
 
@@ -468,6 +489,34 @@ export function QueryResults({
           <p className="p-4 text-center text-gray-500">No results found</p>
         )}
       </div>
+
+      <Drawer.Root open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 bg-black/40" />
+          <Drawer.Content className="fixed right-0 top-0 bottom-0 w-[400px] bg-white p-6 shadow-lg">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium">{selectedObject?.field}</h3>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <span className="sr-only">Close</span>
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto">
+                <pre className="text-sm font-mono bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
+                  {selectedObject
+                    ? JSON.stringify(selectedObject.value, null, 2)
+                    : null}
+                </pre>
+              </div>
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   );
 }
