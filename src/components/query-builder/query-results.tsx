@@ -43,6 +43,13 @@ import { DataTableViewOptions } from "./data-table-view-options";
 import { toast } from "sonner";
 import { QueryState } from "./types";
 import * as Drawer from "vaul";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { getStorage, ref, getMetadata, getDownloadURL } from "firebase/storage";
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -82,6 +89,15 @@ export function QueryResults({
   const [selectedObject, setSelectedObject] = useState<{
     value: unknown;
     field: string;
+  } | null>(null);
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{
+    url: string;
+    metadata: {
+      dimensions?: string;
+      size?: string;
+      createdAt?: string;
+    } | null;
   } | null>(null);
 
   // Handle collection reference click
@@ -233,6 +249,71 @@ export function QueryResults({
     }
   }, [results]);
 
+  // Helper to get storage reference from URL
+  const getStorageRefFromUrl = (url: string) => {
+    // Firebase Storage URLs follow this pattern:
+    // https://firebasestorage.googleapis.com/v0/b/[bucket]/o/[path]?...
+    const matches = url.match(
+      /firebasestorage\.googleapis\.com\/v0\/b\/(.+?)\/o\/(.+?)\?/
+    );
+    if (!matches) throw new Error("Invalid Firebase Storage URL");
+
+    const storage = getStorage();
+    const path = decodeURIComponent(matches[2]); // decode the URL-encoded path
+    return ref(storage, path);
+  };
+
+  // Inside handleImageClick function, update the size formatting logic
+  const formatFileSize = (bytes: number) => {
+    const mbSize = bytes / 1024 / 1024;
+    if (mbSize < 0.1) {
+      // Show in KB if less than 0.1 MB
+      return `${(bytes / 1024).toFixed(2)} KB`;
+    }
+    // Show in MB with 2 decimal places
+    return `${mbSize.toFixed(2)} MB`;
+  };
+
+  // Modified handleImageClick function to use Firebase Storage
+  const handleImageClick = async (url: string) => {
+    try {
+      // Get storage reference from URL
+      const storageRef = getStorageRefFromUrl(url);
+
+      // Get metadata from Firebase Storage
+      const metadata = await getMetadata(storageRef);
+
+      // Get a fresh download URL (as URLs expire)
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      // Create an image element to get dimensions
+      const img = new Image();
+      img.src = downloadUrl;
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      // Update the metadata setting
+      setSelectedImage({
+        url: downloadUrl,
+        metadata: {
+          dimensions: `${img.naturalWidth} × ${img.naturalHeight}`,
+          size: metadata.size ? formatFileSize(metadata.size) : undefined,
+          createdAt: metadata.timeCreated
+            ? new Date(metadata.timeCreated).toLocaleString()
+            : undefined,
+        },
+      });
+      setIsImageDialogOpen(true);
+    } catch (error) {
+      console.error("Error loading image metadata:", error);
+      toast.error("Failed to load image metadata");
+      setIsImageDialogOpen(false);
+    }
+  };
+
   // Format cell value for display
   const formatCellValue = (value: unknown, key: string): React.ReactNode => {
     if (value === null) {
@@ -243,6 +324,22 @@ export function QueryResults({
       );
     }
     if (value === undefined) return "";
+
+    // Handle Firebase Storage URLs
+    if (
+      typeof value === "string" &&
+      value.startsWith("https://firebasestorage")
+    ) {
+      return (
+        <button
+          onClick={() => handleImageClick(value)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
+        >
+          storage
+          <Search className="h-3 w-3" />
+        </button>
+      );
+    }
 
     // Handle object values (including arrays)
     if (typeof value === "object" && value !== null) {
@@ -517,6 +614,76 @@ export function QueryResults({
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+
+      <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Storage File Preview</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Image Preview Container */}
+            <div className="relative">
+              <div className="aspect-video relative bg-gray-100 rounded-lg overflow-hidden">
+                {selectedImage && (
+                  <img
+                    src={selectedImage.url}
+                    alt="Preview"
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                )}
+              </div>
+              {selectedImage && (
+                <a
+                  href={selectedImage.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-2 right-2 text-sm bg-black/50 text-white px-2 py-1 rounded-md flex items-center gap-1 hover:bg-black/70"
+                >
+                  Open in new tab
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+
+            {/* Metadata Table */}
+            {selectedImage?.metadata && (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableBody>
+                    {selectedImage.metadata.dimensions && (
+                      <TableRow>
+                        <TableCell className="font-medium w-32">
+                          Dimensions
+                        </TableCell>
+                        <TableCell>
+                          {selectedImage.metadata.dimensions}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {selectedImage.metadata.size && (
+                      <TableRow>
+                        <TableCell className="font-medium w-32">Size</TableCell>
+                        <TableCell>{selectedImage.metadata.size}</TableCell>
+                      </TableRow>
+                    )}
+                    {selectedImage.metadata.createdAt && (
+                      <TableRow>
+                        <TableCell className="font-medium w-32">
+                          Created
+                        </TableCell>
+                        <TableCell>
+                          {selectedImage.metadata.createdAt}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
