@@ -89,6 +89,7 @@ export function QueryResults({
   const [selectedObject, setSelectedObject] = useState<{
     value: unknown;
     field: string;
+    isArray?: boolean;
   } | null>(null);
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{
@@ -172,33 +173,48 @@ export function QueryResults({
   ): Record<string, unknown> => {
     if (!obj) return obj;
 
-    const result: Record<string, unknown> = { ...obj };
-    Object.entries(result).forEach(([key, value]) => {
-      // Format Date objects with Bangkok timezone
-      if (value instanceof Date) {
-        result[key] = dayjs(value)
-          .tz("Asia/Bangkok")
-          .format("YYYY-MM-DD HH:mm:ss");
+    const processValue = (value: unknown): unknown => {
+      // Handle arrays recursively
+      if (Array.isArray(value)) {
+        return value.map((item) => processValue(item));
       }
-      // Check if it's already a timestamp string in ISO format
-      else if (
+
+      // Handle Date objects
+      if (value instanceof Date) {
+        return dayjs(value).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss");
+      }
+
+      // Handle ISO date strings
+      if (
         typeof value === "string" &&
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)
       ) {
-        result[key] = dayjs(value)
-          .tz("Asia/Bangkok")
-          .format("YYYY-MM-DD HH:mm:ss");
+        return dayjs(value).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss");
       }
-      // If it's a Timestamp object, convert to Date then format
-      else if (value instanceof Timestamp) {
-        result[key] = dayjs(value.toDate())
-          .tz("Asia/Bangkok")
-          .format("YYYY-MM-DD HH:mm:ss");
+
+      // Handle objects recursively
+      if (typeof value === "object" && value !== null) {
+        if (value instanceof Timestamp) {
+          return dayjs(value.toDate())
+            .tz("Asia/Bangkok")
+            .format("YYYY-MM-DD HH:mm:ss");
+        }
+
+        const processed: Record<string, unknown> = {};
+        Object.entries(value as Record<string, unknown>).forEach(
+          ([key, val]) => {
+            processed[key] = processValue(val);
+          }
+        );
+        return processed;
       }
-      // Recursively process nested objects
-      else if (typeof value === "object" && value !== null) {
-        result[key] = formatDatesInObject(value as Record<string, unknown>);
-      }
+
+      return value;
+    };
+
+    const result: Record<string, unknown> = {};
+    Object.entries(obj).forEach(([key, value]) => {
+      result[key] = processValue(value);
     });
     return result;
   };
@@ -206,6 +222,31 @@ export function QueryResults({
   // Process results to handle timestamp fields
   const processedResults = useMemo(() => {
     if (!results || results.length === 0) return results;
+
+    const processValue = (value: unknown): unknown => {
+      // Handle arrays recursively
+      if (Array.isArray(value)) {
+        return value.map((item) => processValue(item));
+      }
+
+      // Handle objects recursively
+      if (typeof value === "object" && value !== null) {
+        if (value instanceof Timestamp) {
+          return value.toDate();
+        }
+
+        // If it's a regular object, process its properties
+        const processed: Record<string, unknown> = {};
+        Object.entries(value as Record<string, unknown>).forEach(
+          ([key, val]) => {
+            processed[key] = processValue(val);
+          }
+        );
+        return processed;
+      }
+
+      return value;
+    };
 
     return results.map((item) => {
       // If we have a schema for this entity type, process the timestamps
@@ -216,13 +257,8 @@ export function QueryResults({
           entityType as keyof SchemaDefinition
         );
       } else {
-        // Otherwise just do basic timestamp conversion
-        processed = { ...item };
-        Object.entries(processed).forEach(([key, value]) => {
-          if (value instanceof Timestamp) {
-            processed[key] = value.toDate();
-          }
-        });
+        // Process the item while preserving array structures
+        processed = processValue(item) as Record<string, unknown>;
       }
 
       // Then format all dates with Bangkok timezone
@@ -314,7 +350,38 @@ export function QueryResults({
     }
   };
 
-  // Format cell value for display
+  // Modify the isArray helper to also check for "array-like" objects
+  const isArrayLike = (value: unknown): boolean => {
+    if (Array.isArray(value)) return true;
+
+    // Check if it's an object with sequential numeric keys starting from 0
+    if (typeof value === "object" && value !== null) {
+      const keys = Object.keys(value);
+      if (keys.length === 0) return false;
+
+      // Check if all keys are sequential numbers starting from 0
+      return keys.every((key, index) => Number(key) === index);
+    }
+
+    return false;
+  };
+
+  // Add a helper to convert array-like objects to actual arrays
+  const toArray = (value: unknown): unknown[] => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "object" && value !== null) {
+      const keys = Object.keys(value);
+      if (isArrayLike(value)) {
+        return keys.map((key) => {
+          const obj = value as { [key: string]: unknown };
+          return obj[key];
+        });
+      }
+    }
+    return [];
+  };
+
+  // Modify the formatCellValue function
   const formatCellValue = (value: unknown, key: string): React.ReactNode => {
     if (value === null) {
       return (
@@ -324,6 +391,27 @@ export function QueryResults({
       );
     }
     if (value === undefined) return "";
+
+    // Handle object and array values
+    if (typeof value === "object" && value !== null) {
+      const isArrayValue = isArrayLike(value);
+      return (
+        <button
+          onClick={() => {
+            setSelectedObject({
+              value: isArrayValue ? toArray(value) : value,
+              field: key,
+              isArray: isArrayValue,
+            });
+            setIsDrawerOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+        >
+          {isArrayValue ? "array" : "object"}
+          <Search className="h-3 w-3" />
+        </button>
+      );
+    }
 
     // Handle Firebase Storage URLs
     if (
@@ -336,22 +424,6 @@ export function QueryResults({
           className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
         >
           storage
-          <Search className="h-3 w-3" />
-        </button>
-      );
-    }
-
-    // Handle object values (including arrays)
-    if (typeof value === "object" && value !== null) {
-      return (
-        <button
-          onClick={() => {
-            setSelectedObject({ value, field: key });
-            setIsDrawerOpen(true);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-        >
-          object
           <Search className="h-3 w-3" />
         </button>
       );
@@ -408,7 +480,7 @@ export function QueryResults({
           }}
           title={`Double click to copy: ${fullId}`}
         >
-          {fullId.slice(0, 5)}...
+          {fullId.length > 15 ? `${fullId.slice(0, 5)}...` : fullId}
         </span>
       );
     }
@@ -593,7 +665,12 @@ export function QueryResults({
           <Drawer.Content className="fixed right-0 top-0 bottom-0 w-[400px] bg-white p-6 shadow-lg">
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">{selectedObject?.field}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium">{selectedObject?.field}</h3>
+                  <span className="text-xs text-gray-500">
+                    ({selectedObject?.isArray ? "Array" : "Object"})
+                  </span>
+                </div>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
                   className="text-gray-400 hover:text-gray-600"
