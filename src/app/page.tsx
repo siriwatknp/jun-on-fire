@@ -961,17 +961,19 @@ export default function Dashboard() {
                 </div>
 
                 {/* Content layout - switch to side-by-side on desktop */}
-                <div className="flex flex-col xl:flex-row gap-10">
+                <div className="flex gap-10 flex-col lg:flex-row">
                   {/* Query Form - takes less space on desktop */}
-                  <QueryForm
-                    query={currentQuery}
-                    onChange={handleQueryChange}
-                    onExecute={executeQuery}
-                    isLoading={isLoading}
-                  />
+                  <div className="lg:min-w-[440px]">
+                    <QueryForm
+                      query={currentQuery}
+                      onChange={handleQueryChange}
+                      onExecute={executeQuery}
+                      isLoading={isLoading}
+                    />
+                  </div>
 
                   {/* Query Results - takes remaining space on desktop */}
-                  <div className="grow">
+                  <div className="min-w-0 flex-1">
                     <QueryResults
                       isLoading={isLoading}
                       error={error}

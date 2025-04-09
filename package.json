@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --experimental-https -p 4416",
+    "dev:prod": "NEXT_PUBLIC_FIREBASE_ENV=production next dev --experimental-https -p 4416",
     "build": "next build",
     "build:functions": "cd functions && npm run build",
     "start": "next start",

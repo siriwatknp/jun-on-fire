@@ -644,9 +644,23 @@ export function QueryForm({
 
               {query.constraints.where.enabled && (
                 <div className="pl-6 space-y-3 max-w-md mt-2">
-                  <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <div className="grid grid-cols-[0fr_1.25fr_1fr] gap-2">
                     {query.constraints.where.clauses.map((clause, index) => (
                       <React.Fragment key={index}>
+                        <div className="row-span-2 relative">
+                          {query.constraints.where.clauses.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteWhereClause(index)}
+                              className="h-10 w-10 flex-shrink-0 absolute -left-9"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Delete clause</span>
+                            </Button>
+                          )}
+                        </div>
                         <FieldSuggestions
                           placeholder="Field"
                           value={clause.field}
@@ -690,7 +704,6 @@ export function QueryForm({
                           </SelectContent>
                         </Select>
                         <Input
-                          className="[grid-column:1]"
                           placeholder="Value"
                           value={clause.value}
                           onChange={(e) =>
@@ -718,20 +731,6 @@ export function QueryForm({
                             <SelectItem value="null">null</SelectItem>
                           </SelectContent>
                         </Select>
-                        {query.constraints.where.clauses.length > 1 ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteWhereClause(index)}
-                            className="h-10 w-10 flex-shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete clause</span>
-                          </Button>
-                        ) : (
-                          <div className="w-10"></div> // Empty placeholder when there's only one clause
-                        )}
                       </React.Fragment>
                     ))}
                   </div>
