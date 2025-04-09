@@ -497,8 +497,17 @@ export function QueryResults({
       Object.keys(result).forEach((key) => keys.add(key));
     });
 
+    // Convert keys to array and sort them
+    const sortedKeys = Array.from(keys).sort((a, b) => {
+      // Always put "id" first
+      if (a === "id") return -1;
+      if (b === "id") return 1;
+      // Sort other columns alphabetically
+      return a.localeCompare(b);
+    });
+
     // Create columns for each key
-    return Array.from(keys).map((key) => ({
+    return sortedKeys.map((key) => ({
       accessorKey: key,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={key} />
