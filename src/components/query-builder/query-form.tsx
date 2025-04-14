@@ -16,6 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   QueryState,
@@ -35,6 +45,8 @@ export function QueryForm({
   onExecute,
   isLoading = false,
 }: QueryFormProps) {
+  const [showNoLimitDialog, setShowNoLimitDialog] = React.useState(false);
+
   // Helper function to extract entity type from path
   const getEntityTypeFromPath = (
     path: string,
@@ -533,6 +545,14 @@ export function QueryForm({
     }));
   };
 
+  const handleExecuteClick = () => {
+    if (!query.constraints.limit.enabled) {
+      setShowNoLimitDialog(true);
+    } else {
+      onExecute(query);
+    }
+  };
+
   return (
     <div className="bg-white pl-2 rounded-lg h-full overflow-y-auto">
       <div className="space-y-6">
@@ -1019,13 +1039,39 @@ export function QueryForm({
           <Button
             size="sm"
             variant="default"
-            onClick={() => onExecute(query)}
+            onClick={handleExecuteClick}
             disabled={isLoading}
             className="bg-black text-white hover:bg-black/90 flex items-center gap-2"
           >
             <Play className={`h-4 w-4 ${isLoading ? "opacity-50" : ""}`} />
             Execute Query
           </Button>
+
+          <AlertDialog
+            open={showNoLimitDialog}
+            onOpenChange={setShowNoLimitDialog}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>No Limit Specified</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You haven&apos;t set a limit for this query. This might return
+                  a large number of documents. Do you want to continue?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setShowNoLimitDialog(false);
+                    onExecute(query);
+                  }}
+                >
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </div>
