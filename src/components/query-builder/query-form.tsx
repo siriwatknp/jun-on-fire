@@ -27,6 +27,7 @@ import {
   ValueType,
 } from "./types";
 import { FieldSuggestions } from "./field-suggestions";
+import { PathSuggestions } from "./path-suggestions";
 
 export function QueryForm({
   query,
@@ -564,26 +565,22 @@ export function QueryForm({
                 </Label>
               </div>
             </RadioGroup>
-            {/* Path Input - revert to standard Input */}
+            {/* Path Input - use PathSuggestions */}
             <div className="space-y-3">
               <Label htmlFor="path" className="text-sm font-medium">
                 Path
               </Label>
-              <Input
-                id="path"
-                className="max-w-md"
+              <PathSuggestions
                 value={query.source.path}
-                onChange={(e) =>
+                onChange={(value) =>
                   updateQuery((q) => ({
                     ...q,
-                    source: { ...q.source, path: e.target.value },
+                    source: { ...q.source, path: value },
                   }))
                 }
-                placeholder={
-                  query.source.type === "collection"
-                    ? "users/user123/posts"
-                    : "posts"
-                }
+                queryType={query.source.type}
+                className="max-w-md"
+                inputProps={{ id: "path" }}
               />
               {query.source.path &&
               getEntityTypeFromPath(query.source.path, query.source.type) ? (

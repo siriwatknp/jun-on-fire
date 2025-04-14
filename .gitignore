@@ -54,3 +54,4 @@ certificates
 debug-screenshots
 
 schema-production.ts
+types.d.ts
