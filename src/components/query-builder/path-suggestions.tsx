@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { fieldMetadata } from "@/schema";
-
 import {
   Command,
   CommandEmpty,
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Portal } from "@radix-ui/react-portal";
 
 export interface PathSuggestionsProps {
   value: string;
@@ -29,12 +29,18 @@ export function PathSuggestions({
 }: PathSuggestionsProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
+  const [popupPosition, setPopupPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   const commandRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   // Get path suggestions based on query type
   const pathSuggestions = useMemo(() => {
-    const collections = Object.keys(fieldMetadata);
+    const collections = Object.keys(fieldMetadata).sort();
     if (queryType === "collectionGroup") {
       return collections.map((collection) => ({
         value: collection,
@@ -66,13 +72,43 @@ export function PathSuggestions({
     }
   }, [value, queryType]);
 
+  // Update popup position when input dimensions change
+  useEffect(() => {
+    if (!inputRef.current || !open) return;
+
+    const updatePosition = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (rect) {
+        setPopupPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      window.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open]);
+
   // Close the dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        commandRef.current &&
-        !commandRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+      const isInputClick = inputRef.current?.contains(target);
+      const isPopupClick = popupRef.current?.contains(target);
+      const isCommandClick = document
+        .querySelector("[cmdk-root]")
+        ?.contains(target);
+
+      // Keep open if clicking on input, popup, or command elements
+      if (!isInputClick && !isPopupClick && !isCommandClick) {
         setOpen(false);
       }
     };
@@ -88,13 +124,6 @@ export function PathSuggestions({
     setInputValue(value);
   }, [value]);
 
-  // Function to handle path selection
-  const handleSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    setInputValue(selectedValue);
-    setOpen(false);
-  };
-
   return (
     <div className="relative" ref={commandRef}>
       <Input
@@ -102,8 +131,9 @@ export function PathSuggestions({
         type="text"
         value={inputValue}
         onChange={(e) => {
-          setInputValue(e.target.value);
-          onChange(e.target.value);
+          const newValue = e.target.value;
+          setInputValue(newValue);
+          onChange(newValue);
           if (!open) {
             setOpen(true);
           }
@@ -118,25 +148,41 @@ export function PathSuggestions({
       />
 
       {open && (
-        <div className="absolute z-10 w-full mt-1">
-          <Command className="rounded-lg border shadow-md">
-            <CommandInput placeholder="Search paths..." />
-            <CommandList>
-              <CommandEmpty>No suggestions found.</CommandEmpty>
-              <CommandGroup>
-                {pathSuggestions.map((suggestion, index) => (
-                  <CommandItem
-                    key={index}
-                    onSelect={() => handleSelect(suggestion.value)}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="font-medium">{suggestion.label}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </div>
+        <Portal>
+          <div
+            ref={popupRef}
+            style={{
+              position: "absolute",
+              top: `${popupPosition.top}px`,
+              left: `${popupPosition.left}px`,
+              minWidth: `${popupPosition.width}px`,
+              zIndex: 50,
+            }}
+          >
+            <Command className="rounded-lg border shadow-md bg-white">
+              <CommandInput placeholder="Search paths..." />
+              <CommandList>
+                <CommandEmpty>No suggestions found.</CommandEmpty>
+                <CommandGroup>
+                  {pathSuggestions.map((suggestion, index) => (
+                    <CommandItem
+                      key={index}
+                      value={suggestion.value}
+                      onSelect={() => {
+                        setInputValue(suggestion.value);
+                        onChange(suggestion.value);
+                        setOpen(false);
+                      }}
+                      className="flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="font-medium">{suggestion.label}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </div>
+        </Portal>
       )}
     </div>
   );

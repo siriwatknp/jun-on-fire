@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Portal } from "@radix-ui/react-portal";
 
 export interface FieldSuggestionsProps {
   value: string;
@@ -29,8 +30,14 @@ export function FieldSuggestions({
 }: FieldSuggestionsProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
+  const [popupPosition, setPopupPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   const commandRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   // Get field suggestions based on entity type
   const fieldSuggestions = useMemo(() => {
@@ -38,21 +45,53 @@ export function FieldSuggestions({
     const metadata = fieldMetadata[entityType as string];
     if (!metadata) return [];
 
-    return Object.entries(metadata).map(([fieldName, meta]) => ({
-      value: fieldName,
-      label: fieldName,
-      type: meta.type,
-      isNullable: meta.isNullable || false,
-    }));
+    return Object.entries(metadata)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([fieldName, meta]) => ({
+        value: fieldName,
+        label: fieldName,
+        type: meta.type,
+        isNullable: meta.isNullable || false,
+      }));
   }, [entityType]);
+
+  // Update popup position when input dimensions change
+  useEffect(() => {
+    if (!inputRef.current || !open) return;
+
+    const updatePosition = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (rect) {
+        setPopupPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      window.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open]);
 
   // Close the dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        commandRef.current &&
-        !commandRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+      const isInputClick = inputRef.current?.contains(target);
+      const isPopupClick = popupRef.current?.contains(target);
+      const isCommandClick = document
+        .querySelector("[cmdk-root]")
+        ?.contains(target);
+
+      // Keep open if clicking on input, popup, or command elements
+      if (!isInputClick && !isPopupClick && !isCommandClick) {
         setOpen(false);
       }
     };
@@ -68,13 +107,6 @@ export function FieldSuggestions({
     setInputValue(value);
   }, [value]);
 
-  // Function to handle field selection
-  const handleSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    setInputValue(selectedValue);
-    setOpen(false);
-  };
-
   return (
     <div className="relative" ref={commandRef}>
       <Input
@@ -82,8 +114,9 @@ export function FieldSuggestions({
         type="text"
         value={inputValue}
         onChange={(e) => {
-          setInputValue(e.target.value);
-          onChange(e.target.value);
+          const newValue = e.target.value;
+          setInputValue(newValue);
+          onChange(newValue);
           if (!open && entityType) {
             setOpen(true);
           }
@@ -97,31 +130,47 @@ export function FieldSuggestions({
       />
 
       {open && entityType && (
-        <div className="absolute z-10 w-full mt-1">
-          <Command className="rounded-lg border shadow-md">
-            <CommandInput placeholder="Search fields..." />
-            <CommandList>
-              <CommandEmpty>No fields found.</CommandEmpty>
-              <CommandGroup>
-                {fieldSuggestions.map((suggestion) => (
-                  <CommandItem
-                    key={suggestion.value}
-                    onSelect={() => handleSelect(suggestion.value)}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="font-medium">{suggestion.label}</span>
-                    <div className="flex items-center gap-1">
-                      <code className="text-xs px-1 bg-gray-100 rounded">
-                        {suggestion.type}
-                        {suggestion.isNullable && "?"}
-                      </code>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </div>
+        <Portal>
+          <div
+            ref={popupRef}
+            style={{
+              position: "absolute",
+              top: `${popupPosition.top}px`,
+              left: `${popupPosition.left}px`,
+              minWidth: `${popupPosition.width}px`,
+              zIndex: 50,
+            }}
+          >
+            <Command className="rounded-lg border shadow-md bg-white">
+              <CommandInput placeholder="Search fields..." />
+              <CommandList>
+                <CommandEmpty>No fields found.</CommandEmpty>
+                <CommandGroup>
+                  {fieldSuggestions.map((suggestion) => (
+                    <CommandItem
+                      key={suggestion.value}
+                      value={suggestion.value}
+                      onSelect={() => {
+                        setInputValue(suggestion.value);
+                        onChange(suggestion.value);
+                        setOpen(false);
+                      }}
+                      className="flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="font-medium">{suggestion.label}</span>
+                      <div className="flex items-center gap-1">
+                        <code className="text-xs px-1 bg-gray-100 rounded">
+                          {suggestion.type}
+                          {suggestion.isNullable && "?"}
+                        </code>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </div>
+        </Portal>
       )}
     </div>
   );
