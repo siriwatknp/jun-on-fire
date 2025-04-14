@@ -11,6 +11,7 @@ on:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
+    environment: staging
 
     # https://github.com/FirebaseExtended/action-hosting-deploy/issues/321
     # permission for bot comment
