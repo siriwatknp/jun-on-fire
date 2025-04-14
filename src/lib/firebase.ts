@@ -52,7 +52,7 @@ const functions = getFunctions(app, "asia-southeast1");
 // Connect to emulators in development mode
 if (
   process.env.NODE_ENV === "development" &&
-  process.env.NEXT_PUBLIC_FIREBASE_ENV !== "production"
+  process.env.NEXT_PUBLIC_FIREBASE_EMULATOR !== "false"
 ) {
   // Dynamically import auth emulator
   import("firebase/auth").then(({ connectAuthEmulator }) => {

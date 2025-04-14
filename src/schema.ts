@@ -2,6 +2,24 @@ import { Timestamp } from "firebase/firestore";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import {
+  fieldMetadata as baseFieldMetadata,
+  type SchemaDefinition,
+  type FieldMetadata,
+} from "./schema-base";
+
+let fieldMetadata = baseFieldMetadata;
+
+if (process.env.NEXT_PUBLIC_FIREBASE_ENV === "production") {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    fieldMetadata = require("./schema-production").fieldMetadata;
+  } catch {}
+}
+
+export type { FieldMetadata, SchemaDefinition } from "./schema-base";
+
+export { fieldMetadata };
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -13,77 +31,6 @@ dayjs.extend(timezone);
  * 1. Autocompletion in query builder (where, order by, sum, average operations)
  * 2. Proper type handling in query results
  */
-
-/**
- * Base interface for all schema entities
- */
-export interface SchemaEntityBase {
-  // Common fields that all entities might have
-  id: string;
-}
-
-/**
- * Schema definition for a Post entity
- */
-export interface PostSchema extends SchemaEntityBase {
-  author: string;
-  title: string | null;
-  number: number;
-  createdAt: Timestamp; // Stored as Firebase Timestamp in the database
-}
-
-/**
- * Type for all schema entities in the system
- */
-export type SchemaEntity = PostSchema;
-
-/**
- * Type mapping from entity names to their schema definitions
- */
-export interface SchemaDefinition {
-  post: PostSchema;
-}
-
-/**
- * Field metadata including display info and formatting functions
- */
-export interface FieldMetadata {
-  type:
-    | "string"
-    | "number"
-    | "boolean"
-    | "timestamp"
-    | "array"
-    | "map"
-    | "null";
-  isNullable?: boolean;
-  /**
-   * If present, the value is a document of this collection.
-   */
-  collectionRef?: string;
-}
-
-/**
- * Metadata for all fields in the schemas
- */
-export const fieldMetadata: Record<string, Record<string, FieldMetadata>> = {
-  post: {
-    author: {
-      type: "string",
-      collectionRef: "users",
-    },
-    title: {
-      type: "string",
-      isNullable: true,
-    },
-    number: {
-      type: "number",
-    },
-    createdAt: {
-      type: "timestamp",
-    },
-  },
-};
 
 /**
  * Helper to format timestamp fields in query results

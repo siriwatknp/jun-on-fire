@@ -41,21 +41,16 @@ export function QueryForm({
   ): string | null => {
     if (!path) return null;
 
-    // For collection group, the path is just the collection name (e.g., "posts")
+    // For collection group, the path is just the collection name
     if (queryType === "collectionGroup") {
-      // Remove trailing 's' to get entity type (e.g., "posts" -> "post")
-      const entityType = path.endsWith("s") ? path.slice(0, -1) : path;
-      return fieldMetadata[entityType] ? entityType : null;
+      return fieldMetadata[path] ? path : null;
     }
 
-    // For collection, extract the last segment of the path (e.g., "users/user123/posts" -> "posts")
+    // For collection, extract the last segment of the path
     if (queryType === "collection") {
       const segments = path.split("/");
       const lastSegment = segments[segments.length - 1];
-      const entityType = lastSegment.endsWith("s")
-        ? lastSegment.slice(0, -1)
-        : lastSegment;
-      return fieldMetadata[entityType] ? entityType : null;
+      return fieldMetadata[lastSegment] ? lastSegment : null;
     }
 
     return null;
