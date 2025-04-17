@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Save,
   FileText,
@@ -43,7 +43,6 @@ import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
-  SidebarHeader,
   SidebarProvider,
   SidebarTrigger,
   SidebarMenu,
@@ -53,6 +52,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarInset,
 } from "@/components/ui/sidebar";
 
 // Import components directly from query-builder folder
@@ -105,6 +105,19 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
+  // Load a saved query
+  const loadQuery = useCallback((query: QueryState) => {
+    setCurrentQuery({ ...query });
+    setIsLoading(false);
+    setError(null);
+    setResults(null);
+    setActiveQueryId(query.id);
+    setIsTitleEditing(false); // Cancel any ongoing title editing
+
+    // Execute the query automatically
+    executeQuery({ ...query });
+  }, []);
+
   // Load saved queries from IndexedDB on component mount
   useEffect(() => {
     const loadQueries = async () => {
@@ -152,7 +165,7 @@ export default function Dashboard() {
     };
 
     loadQueries();
-  }, []);
+  }, [loadQuery]);
 
   // Create a new query with incremented draft number and save it to the list
   const createNewQuery = async () => {
@@ -229,19 +242,6 @@ export default function Dashboard() {
       console.error("Error saving query:", error);
       toast.error("Failed to save query");
     }
-  };
-
-  // Load a saved query
-  const loadQuery = (query: QueryState) => {
-    setCurrentQuery({ ...query });
-    setIsLoading(false);
-    setError(null);
-    setResults(null);
-    setActiveQueryId(query.id);
-    setIsTitleEditing(false); // Cancel any ongoing title editing
-
-    // Execute the query automatically
-    executeQuery({ ...query });
   };
 
   // Delete a saved query
@@ -664,180 +664,172 @@ export default function Dashboard() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex-1 flex overflow-hidden">
-        <Toaster position="top-right" richColors />
-        {/* Sidebar component - direct child of flex container */}
-        <Sidebar variant="sidebar" collapsible="icon" className="border-r">
-          <SidebarHeader className="flex items-center justify-between p-3 border-b">
-            {isInitialLoading ? (
-              <Skeleton className="h-9 w-full" />
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={createNewQuery}
-                className="w-full"
-                disabled={isInitialLoading}
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                New Query
-              </Button>
-            )}
-          </SidebarHeader>
+      <Toaster position="top-right" richColors />
 
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-4">My Queries</SidebarGroupLabel>
-              <SidebarGroupContent>
-                {isInitialLoading ? (
-                  <div className="space-y-2 p-2">
-                    {/* Skeleton items for the sidebar queries */}
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="px-4 py-2 min-h-[60px]">
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex items-center">
-                            <Skeleton className="h-4 w-4 mr-2" />
-                            <Skeleton className="h-5 w-32" />
-                          </div>
-                          <div className="flex ml-6 space-x-1">
-                            <Skeleton className="h-4 w-10 rounded-full" />
-                            <Skeleton className="h-4 w-14 rounded-full" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : savedQueries.length === 0 ? (
-                  <p className="text-sm text-gray-500 px-4 py-2">
-                    No saved queries yet
-                  </p>
-                ) : (
-                  <SidebarMenu>
-                    {savedQueries
-                      // Sort by favorite first, then by updatedAt
-                      .sort((a, b) => {
-                        // First sort by favorite status (favorite first)
-                        if (a.favorite && !b.favorite) return -1;
-                        if (!a.favorite && b.favorite) return 1;
-                        // Then sort by updatedAt for queries with the same favorite status
-                        return b.updatedAt - a.updatedAt;
-                      })
-                      .map((query) => (
-                        <SidebarMenuItem key={query.id}>
-                          <SidebarMenuButton
-                            isActive={activeQueryId === query.id}
-                            onClick={() => loadQuery(query)}
-                            className="px-4 py-2 min-h-[60px]"
-                          >
-                            <div className="flex flex-col items-start w-full">
-                              <div className="flex items-center w-full">
-                                <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="truncate">{query.title}</span>
+      <div className="jun-layout">
+        <div className="jun-edgeSidebar" style={{ boxShadow: "none" }}>
+          <div className="jun-edgeContent">
+            {/* Sidebar component - direct child of flex container */}
+            <Sidebar variant="sidebar" collapsible="icon">
+              <SidebarContent>
+                <SidebarGroup>
+                  <SidebarGroupLabel className="px-4">
+                    My Queries
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    {isInitialLoading ? (
+                      <div className="space-y-2 p-2">
+                        {/* Skeleton items for the sidebar queries */}
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="px-4 py-2 min-h-[60px]">
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center">
+                                <Skeleton className="h-4 w-4 mr-2" />
+                                <Skeleton className="h-5 w-32" />
                               </div>
-
-                              {/* Query info chips */}
-                              <div className="flex flex-wrap gap-1 mt-1 ml-6">
-                                {/* Source type chip */}
-                                <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                  {query.source.type === "collection"
-                                    ? "col"
-                                    : "grp"}
-                                </span>
-
-                                {/* Constraints chip - show if any constraint is enabled */}
-                                {(query.constraints.where.enabled ||
-                                  query.constraints.orderBy.enabled ||
-                                  query.constraints.limit.enabled) && (
-                                  <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                    const
-                                  </span>
-                                )}
-
-                                {/* Aggregation chip - show if any aggregation is enabled */}
-                                {(query.aggregation.count.enabled ||
-                                  query.aggregation.sum.enabled ||
-                                  query.aggregation.average.enabled) && (
-                                  <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                    agg
-                                  </span>
-                                )}
+                              <div className="flex ml-6 space-x-1">
+                                <Skeleton className="h-4 w-10 rounded-full" />
+                                <Skeleton className="h-4 w-14 rounded-full" />
                               </div>
                             </div>
-                          </SidebarMenuButton>
-                          <SidebarMenuAction
-                            className="right-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(query.id, e);
-                            }}
-                            onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              // Only handle double click if it's already favorited
-                              if (query.favorite) {
-                                toggleFavorite(query.id, e);
-                              }
-                            }}
-                            title={
-                              query.favorite
-                                ? "Double-click to unfavorite"
-                                : "Click to favorite"
-                            }
-                            aria-label={
-                              query.favorite
-                                ? "Favorited query"
-                                : "Add to favorites"
-                            }
-                          >
-                            <Heart
-                              className={`h-3 w-3 ${
-                                query.favorite
-                                  ? "fill-red-500 text-red-500"
-                                  : ""
-                              }`}
-                            />
-                          </SidebarMenuAction>
-                          <SidebarMenuAction
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteQuery(query.id);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            <span className="sr-only">Delete</span>
-                          </SidebarMenuAction>
-                        </SidebarMenuItem>
-                      ))}
-                  </SidebarMenu>
-                )}
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
+                          </div>
+                        ))}
+                      </div>
+                    ) : savedQueries.length === 0 ? (
+                      <p className="text-sm text-gray-500 px-4 py-2">
+                        No saved queries yet
+                      </p>
+                    ) : (
+                      <SidebarMenu>
+                        {savedQueries
+                          // Sort by favorite first, then by updatedAt
+                          .sort((a, b) => {
+                            // First sort by favorite status (favorite first)
+                            if (a.favorite && !b.favorite) return -1;
+                            if (!a.favorite && b.favorite) return 1;
+                            // Then sort by updatedAt for queries with the same favorite status
+                            return b.updatedAt - a.updatedAt;
+                          })
+                          .map((query) => (
+                            <SidebarMenuItem key={query.id}>
+                              <SidebarMenuButton
+                                isActive={activeQueryId === query.id}
+                                onClick={() => loadQuery(query)}
+                                className="px-4 py-2 min-h-[60px]"
+                              >
+                                <div className="flex flex-col items-start w-full">
+                                  <div className="flex items-center w-full">
+                                    <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+                                    <span className="truncate">
+                                      {query.title}
+                                    </span>
+                                  </div>
+
+                                  {/* Query info chips */}
+                                  <div className="flex flex-wrap gap-1 mt-1 ml-6">
+                                    {/* Source type chip */}
+                                    <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      {query.source.type === "collection"
+                                        ? "col"
+                                        : "grp"}
+                                    </span>
+
+                                    {/* Constraints chip - show if any constraint is enabled */}
+                                    {(query.constraints.where.enabled ||
+                                      query.constraints.orderBy.enabled ||
+                                      query.constraints.limit.enabled) && (
+                                      <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        const
+                                      </span>
+                                    )}
+
+                                    {/* Aggregation chip - show if any aggregation is enabled */}
+                                    {(query.aggregation.count.enabled ||
+                                      query.aggregation.sum.enabled ||
+                                      query.aggregation.average.enabled) && (
+                                      <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                        agg
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </SidebarMenuButton>
+                              <SidebarMenuAction
+                                className="right-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(query.id, e);
+                                }}
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  // Only handle double click if it's already favorited
+                                  if (query.favorite) {
+                                    toggleFavorite(query.id, e);
+                                  }
+                                }}
+                                title={
+                                  query.favorite
+                                    ? "Double-click to unfavorite"
+                                    : "Click to favorite"
+                                }
+                                aria-label={
+                                  query.favorite
+                                    ? "Favorited query"
+                                    : "Add to favorites"
+                                }
+                              >
+                                <Heart
+                                  className={`h-3 w-3 ${
+                                    query.favorite
+                                      ? "fill-red-500 text-red-500"
+                                      : ""
+                                  }`}
+                                />
+                              </SidebarMenuAction>
+                              <SidebarMenuAction
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteQuery(query.id);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                <span className="sr-only">Delete</span>
+                              </SidebarMenuAction>
+                            </SidebarMenuItem>
+                          ))}
+                      </SidebarMenu>
+                    )}
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </SidebarContent>
+            </Sidebar>
+          </div>
+        </div>
+
+        <div className="jun-header px-3 py-2.5">
+          <div className="flex flex-1 items-center gap-1">
+            <SidebarTrigger />
+            <h2 className="text-lg font-semibold">Query Builder</h2>
+          </div>
+          {/* Auth UI */}
+          {!authLoading && (
+            <div>
+              {user ? (
+                <UserMenu email={user.email || "User"} />
+              ) : (
+                <AuthDialog>
+                  <Button variant="outline" size="sm">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login
+                  </Button>
+                </AuthDialog>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Main content area - direct sibling of Sidebar */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b">
-            <div className="flex items-center">
-              <SidebarTrigger className="mr-2" />
-              <h2 className="text-lg font-semibold">Query Builder</h2>
-            </div>
-            {/* Auth UI */}
-            {!authLoading && (
-              <div>
-                {user ? (
-                  <UserMenu email={user.email || "User"} />
-                ) : (
-                  <AuthDialog>
-                    <Button variant="outline" size="sm">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Login
-                    </Button>
-                  </AuthDialog>
-                )}
-              </div>
-            )}
-          </div>
-
+        <SidebarInset className="jun-content">
           <div className="flex-1 overflow-auto p-4 min-h-[calc(100vh-4rem)]">
             {isInitialLoading ? (
               <div className="space-y-6 p-4">
@@ -909,10 +901,10 @@ export default function Dashboard() {
             ) : activeQueryId ? (
               <div className="flex flex-col gap-4">
                 {/* Title and Save button row */}
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center gap-2 flex-wrap">
                   {/* Editable Title */}
                   {isTitleEditing ? (
-                    <div className="flex items-center gap-2 flex-1 mr-4">
+                    <div className="flex items-center gap-2 flex-9999 mr-4">
                       <Pencil className="h-4 w-4 text-gray-500 flex-shrink-0" />
                       <div className="flex-1 flex items-center">
                         <input
@@ -946,18 +938,29 @@ export default function Dashboard() {
                       </h2>
                     </div>
                   )}
-
-                  {/* Save button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={saveQuery}
-                    className="flex items-center gap-1 whitespace-nowrap"
-                    title="Save query"
-                  >
-                    <Save className="h-4 w-4" />
-                    Save Query
-                  </Button>
+                  <div className="flex-999" />
+                  <div className="flex gap-2 flex-1">
+                    <Button
+                      className="flex items-center gap-1 whitespace-nowrap flex-1"
+                      variant="outline"
+                      size="sm"
+                      onClick={saveQuery}
+                      title="Save query"
+                    >
+                      <Save className="h-4 w-4" />
+                      Save Query
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      variant="outline"
+                      size="sm"
+                      onClick={createNewQuery}
+                      disabled={isInitialLoading}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      New Query
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Content layout - switch to side-by-side on desktop */}
@@ -1012,7 +1015,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </main>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );

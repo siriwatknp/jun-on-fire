@@ -666,19 +666,21 @@ export function QueryResults({
               </Table>
             </div>
           ) : (
-            <pre className="p-4 text-xs font-mono overflow-x-auto h-full">
-              {JSON.stringify(processedResults, null, 2)}
-            </pre>
+            <JsonView results={processedResults} />
           )
         ) : (
           <p className="p-4 text-center text-gray-500">No results found</p>
         )}
       </div>
 
-      <Drawer.Root open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+      <Drawer.Root
+        direction="right"
+        open={isDrawerOpen}
+        onOpenChange={setIsDrawerOpen}
+      >
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 bg-black/40" />
-          <Drawer.Content className="fixed right-0 top-0 bottom-0 w-[400px] bg-white p-6 shadow-lg">
+          <Drawer.Overlay className="fixed z-10 inset-0 bg-black/40" />
+          <Drawer.Content className="fixed z-100 right-0 top-0 bottom-0 w-[400px] bg-white p-6 shadow-lg">
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -715,7 +717,6 @@ export function QueryResults({
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Image Preview Container */}
             <div className="relative">
               <div className="aspect-video relative bg-gray-100 rounded-lg overflow-hidden">
                 {selectedImage && (
@@ -739,7 +740,6 @@ export function QueryResults({
               )}
             </div>
 
-            {/* Metadata Table */}
             {selectedImage?.metadata && (
               <div className="border rounded-lg">
                 <Table>
@@ -780,3 +780,13 @@ export function QueryResults({
     </div>
   );
 }
+
+const JsonView = React.memo(function JsonView({
+  results,
+}: Pick<QueryResultsProps, "results">) {
+  return (
+    <pre className="p-4 text-xs font-mono overflow-x-auto h-full">
+      {JSON.stringify(results, null, 2)}
+    </pre>
+  );
+});

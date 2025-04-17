@@ -127,6 +127,7 @@ export function PathSuggestions({
   return (
     <div className="relative" ref={commandRef}>
       <Input
+        autoComplete={pathSuggestions.length ? "off" : undefined}
         ref={inputRef}
         type="text"
         value={inputValue}
