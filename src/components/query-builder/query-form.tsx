@@ -3,6 +3,7 @@
 import React, { useMemo } from "react";
 import { PlusCircle, Trash2, Play, RotateCcw, Plus } from "lucide-react";
 import { fieldMetadata } from "@/schema";
+import { useQueryAction } from "./query-action-context";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,7 +30,6 @@ import {
 
 import {
   QueryState,
-  QueryFormProps,
   QueryType,
   WhereOperator,
   WhereClause,
@@ -39,12 +39,14 @@ import {
 import { FieldSuggestions } from "./field-suggestions";
 import { PathSuggestions } from "./path-suggestions";
 
-export function QueryForm({
-  query,
-  onChange,
-  onExecute,
-  isLoading = false,
-}: QueryFormProps) {
+interface QueryFormProps {
+  query: QueryState;
+  onChange: (query: QueryState) => void;
+  isLoading: boolean;
+}
+
+export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
+  const { onExecuteQuery } = useQueryAction();
   const [showNoLimitDialog, setShowNoLimitDialog] = React.useState(false);
 
   // Helper function to extract entity type from path
@@ -549,7 +551,7 @@ export function QueryForm({
     if (!query.constraints.limit.enabled) {
       setShowNoLimitDialog(true);
     } else {
-      onExecute(query);
+      onExecuteQuery(query);
     }
   };
 
@@ -1043,7 +1045,11 @@ export function QueryForm({
             disabled={isLoading}
             className="bg-black text-white hover:bg-black/90 flex items-center gap-2"
           >
-            <Play className={`h-4 w-4 ${isLoading ? "opacity-50" : ""}`} />
+            {isLoading ? (
+              <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
             Execute Query
           </Button>
 
@@ -1064,7 +1070,7 @@ export function QueryForm({
                 <AlertDialogAction
                   onClick={() => {
                     setShowNoLimitDialog(false);
-                    onExecute(query);
+                    onExecuteQuery(query);
                   }}
                 >
                   Continue
