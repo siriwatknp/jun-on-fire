@@ -37,7 +37,7 @@ jobs:
         run: |
           curl -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
                -H "Accept: application/vnd.github.v3.raw" \
-               -o src/schema-production.ts \
+               -o shared/schema-production.ts \
                https://api.github.com/repos/siriwatknp/scrapee/contents/shared/schema-production.ts
 
       - name: Install & Build

@@ -6,7 +6,7 @@ import {
   fieldMetadata as baseFieldMetadata,
   type SchemaDefinition,
   type FieldMetadata,
-} from "./schema-base";
+} from "../shared/schema-base";
 
 let fieldMetadata = baseFieldMetadata;
 
@@ -17,7 +17,7 @@ if (process.env.NEXT_PUBLIC_FIREBASE_ENV === "production") {
   } catch {}
 }
 
-export type { FieldMetadata, SchemaDefinition } from "./schema-base";
+export type { FieldMetadata, SchemaDefinition } from "../shared/schema-base";
 
 export { fieldMetadata };
 
