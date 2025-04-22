@@ -49,14 +49,15 @@ export function PathSuggestions({
     }
 
     // For collection type, we'll suggest paths based on the current input
-    const segments = value.split("/");
+    const segments = inputValue.split("/");
     const isEvenSegments = segments.length % 2 === 0;
 
     if (isEvenSegments) {
       // If even number of segments, suggest document IDs with placeholder
       return [
         {
-          value: value + (value.endsWith("/") ? "" : "/") + "doc_id",
+          value:
+            inputValue + (inputValue.endsWith("/") ? "" : "/") + "{{doc_id}}",
           label: "doc_id (example)",
         },
       ];
@@ -70,7 +71,13 @@ export function PathSuggestions({
         label: collection,
       }));
     }
-  }, [value, queryType]);
+  }, [inputValue, queryType]);
+
+  const handleSaveValue = () => {
+    if (inputValue !== value) {
+      onChange(inputValue);
+    }
+  };
 
   // Update popup position when input dimensions change
   useEffect(() => {
@@ -110,6 +117,7 @@ export function PathSuggestions({
       // Keep open if clicking on input, popup, or command elements
       if (!isInputClick && !isPopupClick && !isCommandClick) {
         setOpen(false);
+        handleSaveValue();
       }
     };
 
@@ -117,7 +125,7 @@ export function PathSuggestions({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [inputValue, value]);
 
   // Update input value when value prop changes
   useEffect(() => {
@@ -134,11 +142,17 @@ export function PathSuggestions({
         onChange={(e) => {
           const newValue = e.target.value;
           setInputValue(newValue);
-          onChange(newValue);
           if (!open) {
             setOpen(true);
           }
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleSaveValue();
+            setOpen(false);
+          }
+        }}
+        onBlur={handleSaveValue}
         onClick={() => setOpen(true)}
         onFocus={() => setOpen(true)}
         placeholder={
