@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { DocumentData } from "firebase/firestore";
-import { fieldMetadata, SchemaDefinition } from "@/schema";
+import { fieldMetadata } from "@/schema";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -26,14 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  TableIcon,
-  BracketsIcon,
-  Search,
-  ExternalLink,
-  X,
-  RotateCcw,
-} from "lucide-react";
+import { TableIcon, BracketsIcon, Search, ExternalLink, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableViewOptions } from "./data-table-view-options";
@@ -47,9 +40,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getStorage, ref, getMetadata, getDownloadURL } from "firebase/storage";
-import { Button } from "@/components/ui/button";
 import { CollectionRefTooltip } from "./collection-ref-tooltip";
-import { useQueryAction } from "./query-action-context";
+import { GetItemString, JSONTree } from "react-json-tree";
+import { ClipboardButton } from "@/components/ui/clipboard-button";
 
 // Setup dayjs for timezone support
 dayjs.extend(utc);
@@ -59,7 +52,6 @@ interface QueryResultsProps {
   isLoading: boolean;
   error: string | null;
   results: DocumentData[] | null;
-  entityType?: keyof SchemaDefinition | string;
   currentQuery: QueryState;
 }
 
@@ -116,12 +108,12 @@ const getStorageRefFromUrl = (url: string) => {
 
 interface TableViewProps {
   results: DocumentData[];
-  entityType?: keyof SchemaDefinition | string;
+  queryPath: string;
 }
 
 const TableView = React.memo(function TableView({
   results,
-  entityType,
+  queryPath,
 }: TableViewProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -222,6 +214,7 @@ const TableView = React.memo(function TableView({
       );
     }
 
+    const entityType = queryPath.split("/").reverse()[0];
     const fieldMeta = entityType && fieldMetadata[entityType]?.[key];
     if (
       fieldMeta &&
@@ -232,6 +225,7 @@ const TableView = React.memo(function TableView({
       return (
         <CollectionRefTooltip
           collectionRef={fieldMeta.collectionRef}
+          queryPath={queryPath}
           value={String(value)}
         />
       );
@@ -461,15 +455,85 @@ const TableView = React.memo(function TableView({
   );
 });
 
+const jsonViewTheme = {
+  scheme: "custom",
+  author: "siriwatknp",
+  base00: "transparent",
+  base01: "#f5f5f5",
+  base02: "#e5e5e5",
+  base03: "#999999",
+  base04: "#a3a3a3",
+  base05: "#737373",
+  base06: "#525252",
+  base07: "#404040",
+  base08: "#dc2626", // red
+  base09: "#ea580c", // orange
+  base0A: "#ca8a04", // yellow
+  base0B: "#16a34a", // green
+  base0C: "#0891b2", // cyan
+  base0D: "#414141", // dark gray
+  base0E: "#9333ea", // violet
+  base0F: "#be185d", // magenta
+};
+
 const JsonView = React.memo(function JsonView({
   results,
 }: {
   results: unknown;
 }) {
+  const defaultItemString: GetItemString = React.useCallback(
+    (type, data, itemType, itemString) => {
+      return (
+        <span className="inline-flex group">
+          {itemType} {itemString}
+          <ClipboardButton
+            value={data}
+            className="ml-1 invisible group-hover:visible"
+          />
+        </span>
+      );
+    },
+    []
+  );
   return (
-    <pre className="bg-gray-50 rounded-sm p-4 text-xs font-mono overflow-x-auto h-full">
-      {JSON.stringify(results, null, 2)}
-    </pre>
+    <div className="bg-gray-50 rounded-sm p-4 h-full overflow-x-auto">
+      <JSONTree
+        data={results}
+        theme={{
+          extend: jsonViewTheme,
+          tree: { fontSize: "0.875rem", margin: 0 },
+        }}
+        getItemString={defaultItemString}
+        valueRenderer={(valueAsString, value) => {
+          if (typeof value === "string" && value.startsWith("https://")) {
+            return (
+              <a
+                href={value}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  cursor: "pointer",
+                  color: "#1976d2",
+                  textDecoration: "underline",
+                }}
+              >
+                {value}
+              </a>
+            );
+          }
+          return (
+            <span className="inline-flex group ml-[0.5ch]">
+              {valueAsString as string}{" "}
+              <ClipboardButton
+                value={value}
+                className="ml-1 invisible group-hover:visible"
+              />
+            </span>
+          );
+        }}
+        shouldExpandNodeInitially={(keyPath, data, level) => level <= 1}
+      />
+    </div>
   );
 });
 
@@ -477,15 +541,9 @@ export function QueryResults({
   isLoading,
   error,
   results,
-  entityType,
   currentQuery,
 }: QueryResultsProps) {
-  const { onExecuteQuery } = useQueryAction();
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-
-  const handleRefreshQuery = () => {
-    onExecuteQuery(currentQuery);
-  };
 
   // Calculate the size of the results
   const resultSize = useMemo(() => {
@@ -529,39 +587,6 @@ export function QueryResults({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <ToggleGroup
-          type="single"
-          value={viewMode}
-          onValueChange={(value) => value && setViewMode(value as ViewMode)}
-        >
-          <ToggleGroupItem
-            value="table"
-            aria-label="Table view"
-            className="data-[state=on]:bg-gray-200 data-[state=on]:text-gray-900 rounded"
-          >
-            <TableIcon className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="json"
-            aria-label="JSON view"
-            className="data-[state=on]:bg-gray-200 data-[state=on]:text-gray-900 rounded"
-          >
-            <BracketsIcon className="h-4 w-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
-        {!error && results && results.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefreshQuery}
-            disabled={isLoading}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        )}
-      </div>
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-medium flex items-center gap-2">
           Results
@@ -576,11 +601,32 @@ export function QueryResults({
             )}
           </div>
         </h3>
+
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(value) => value && setViewMode(value as ViewMode)}
+        >
+          <ToggleGroupItem
+            value="table"
+            aria-label="Table view"
+            className="data-[state=on]:bg-white data-[state=on]:text-gray-900 rounded"
+          >
+            <TableIcon className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="json"
+            aria-label="JSON view"
+            className="data-[state=on]:bg-white data-[state=on]:text-gray-900 rounded"
+          >
+            <BracketsIcon className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
       <div className="border rounded overflow-auto flex-1">
         {results.length > 0 ? (
           viewMode === "table" ? (
-            <TableView results={results} entityType={entityType} />
+            <TableView results={results} queryPath={currentQuery.source.path} />
           ) : (
             <JsonView results={results} />
           )

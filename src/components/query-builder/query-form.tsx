@@ -1046,9 +1046,9 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
             className="bg-black text-white hover:bg-black/90 flex items-center gap-2"
           >
             {isLoading ? (
-              <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+              <RotateCcw className="h-4 w-4 animate-spin" />
             ) : (
-              <Play className="h-4 w-4 mr-2" />
+              <Play className="h-4 w-4" />
             )}
             Execute Query
           </Button>

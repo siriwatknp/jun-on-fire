@@ -16,15 +16,24 @@ import {
 import { useQueryAction } from "./query-action-context";
 
 interface CollectionRefTooltipProps {
+  queryPath: string;
   collectionRef: string;
   value: string;
 }
 
 export function CollectionRefTooltip({
+  queryPath,
   collectionRef,
   value,
 }: CollectionRefTooltipProps) {
   const { onSaveQuery, onCreateQuery, onExecuteQuery } = useQueryAction();
+  const querySegments = queryPath.split("/");
+  const parsedCollectionRef = collectionRef
+    .split("/")
+    .map((item, index) => item.replaceAll("%s", querySegments[index]))
+    .join("/");
+
+  console.log("parsedCollectionRef", parsedCollectionRef);
 
   const handleCollectionRefClick = async () => {
     try {
@@ -32,10 +41,10 @@ export function CollectionRefTooltip({
       const newQuery = {
         ...createDefaultQuery(),
         id: crypto.randomUUID(),
-        title: `Query ${collectionRef} (${value})`,
+        title: `Query ${parsedCollectionRef} (${value})`,
         source: {
           type: "collection" as QueryType,
-          path: collectionRef,
+          path: parsedCollectionRef,
         },
         constraints: {
           where: {
@@ -77,7 +86,7 @@ export function CollectionRefTooltip({
 
       onCreateQuery(newQuery);
       onExecuteQuery(newQuery);
-      toast.success(`Created new query for ${collectionRef}`);
+      toast.success(`Created new query for ${parsedCollectionRef}`);
     } catch (error) {
       console.error("Error handling collection reference click:", error);
       toast.error("Failed to create new query");
@@ -102,7 +111,7 @@ export function CollectionRefTooltip({
           </button>
         </TooltipTrigger>
         <TooltipContent className="max-w-[300px] space-y-1 px-2">
-          <p className="font-medium">{collectionRef}</p>
+          <p className="font-medium">{parsedCollectionRef}</p>
           <p className="text-xs text-gray-300">ID: {value}</p>
         </TooltipContent>
       </Tooltip>

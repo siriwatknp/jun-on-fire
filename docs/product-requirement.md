@@ -21,3 +21,23 @@ Store queries as tree in a state, then travese the tree to transform into Firest
 
 - User can create new query, the query will be saved as draft.
 - Queries always saved when clicking "run query" and the result is shown (result also saved along the query)
+
+## Query Result
+
+### Collection Ref
+
+Support value type
+
+- [x] string
+- [x] string with format
+- [ ] array of ids
+- [ ] map (key of ids)
+- [ ] nested object with the above type
+- [ ] array of object with the above type
+
+### Aggregation
+
+- [ ] sum values of map
+- [ ] sum values of array
+
+### Smart Json View
