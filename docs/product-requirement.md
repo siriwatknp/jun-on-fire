@@ -32,7 +32,7 @@ Support field types with `collectionRef` in schema:
 - [x] array of strings (multiple document references)
 - [x] map with string values (key-value pairs of document references)
 - [x] nested object containing the above types
-- [ ] array of objects containing the above types
+- [x] array of objects containing the above types
 
 When a field has `collectionRef` defined in the schema:
 
