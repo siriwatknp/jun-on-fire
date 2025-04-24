@@ -1,0 +1,6 @@
+---
+description: When there is no error, ask to commit the code
+globs: 
+alwaysApply: false
+---
+Always use conventional commits when commiting the code.
