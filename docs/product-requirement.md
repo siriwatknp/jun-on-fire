@@ -29,9 +29,9 @@ Store queries as tree in a state, then travese the tree to transform into Firest
 Support field types with `collectionRef` in schema:
 
 - [x] string (single document reference)
-- [ ] array of strings (multiple document references)
-- [ ] map with string values (key-value pairs of document references)
-- [ ] nested object containing the above types
+- [x] array of strings (multiple document references)
+- [x] map with string values (key-value pairs of document references)
+- [x] nested object containing the above types
 - [ ] array of objects containing the above types
 
 When a field has `collectionRef` defined in the schema:

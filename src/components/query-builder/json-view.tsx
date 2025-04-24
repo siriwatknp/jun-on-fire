@@ -61,7 +61,7 @@ export const JsonView = React.memo(function JsonView({
       const segments = [...path];
       while (!result && segments.length) {
         if (typeof segments[0] === "string") {
-          key = key ? `${key}.${segments[0]}` : segments[0];
+          key = key ? `${segments[0]}.${key}` : segments[0];
           result = schema[key as keyof typeof schema];
         }
         segments.shift();
