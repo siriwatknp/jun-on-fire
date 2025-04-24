@@ -33,12 +33,15 @@ jobs:
       - name: Delete functions folder
         run: rm -rf functions/
 
-      - name: Fetch schema file
+      - name: Fetch files from private repo
         run: |
+          mkdir -p shared src/renderer
           curl -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
                -H "Accept: application/vnd.github.v3.raw" \
+               https://api.github.com/repos/siriwatknp/scrapee/contents/shared/schema-production.ts \
                -o shared/schema-production.ts \
-               https://api.github.com/repos/siriwatknp/scrapee/contents/shared/schema-production.ts
+               https://api.github.com/repos/siriwatknp/scrapee/contents/src/renderer/types.d.ts \
+               -o src/renderer/types.d.ts
 
       - name: Install & Build
         run: npm ci && npm run build
