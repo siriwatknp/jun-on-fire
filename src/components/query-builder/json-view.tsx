@@ -37,19 +37,16 @@ export const JsonView = React.memo(function JsonView({
   queryPath = "",
   schema,
 }: JsonViewProps) {
-  const getCollectionRef = React.useCallback(
+  const getKeyCollectionRef = React.useCallback(
     (path: (string | number)[]) => {
       if (!queryPath || !schema || path.length === 0) return null;
 
-      let key = "";
-      let keyTemplate = ""; // for { foo.bar.baz.%s.field: "..." }
       let keyLastTemplate = ""; // for { foo.map.baz.map.field: "..." }
       let result;
       let count = 1;
       const segments = [...path];
       while (!result && segments.length) {
         if (typeof segments[0] === "string") {
-          key = key ? `${segments[0]}.${key}` : segments[0];
           if (count % 2 === 1) {
             keyLastTemplate = keyLastTemplate ? `%s.${keyLastTemplate}` : "%s";
           } else {
@@ -57,6 +54,32 @@ export const JsonView = React.memo(function JsonView({
               ? `${segments[0]}.${keyLastTemplate}`
               : segments[0];
           }
+          result = schema[keyLastTemplate as keyof typeof schema];
+          count++;
+        }
+        segments.shift();
+      }
+
+      if (result && typeof result === "object" && "collectionRef" in result) {
+        return result.collectionRef;
+      }
+
+      return null;
+    },
+    [queryPath, schema]
+  );
+  const getValueCollectionRef = React.useCallback(
+    (path: (string | number)[]) => {
+      if (!queryPath || !schema || path.length === 0) return null;
+
+      let key = "";
+      let keyTemplate = ""; // for { foo.bar.baz.%s.field: "..." }
+      let result;
+      let count = 1;
+      const segments = [...path];
+      while (!result && segments.length) {
+        if (typeof segments[0] === "string") {
+          key = key ? `${segments[0]}.${key}` : segments[0];
           if (count % 2 === 0) {
             keyTemplate = keyTemplate ? `%s.${keyTemplate}` : "%s";
           } else {
@@ -64,11 +87,9 @@ export const JsonView = React.memo(function JsonView({
               ? `${segments[0]}.${keyTemplate}`
               : segments[0];
           }
-          console.log("keyLastTemplate", keyLastTemplate);
           result =
             schema[key as keyof typeof schema] ||
-            schema[keyTemplate as keyof typeof schema] ||
-            schema[keyLastTemplate as keyof typeof schema];
+            schema[keyTemplate as keyof typeof schema];
           count++;
         }
         segments.shift();
@@ -85,7 +106,7 @@ export const JsonView = React.memo(function JsonView({
 
   const defaultItemString: GetItemString = React.useCallback(
     (type, data, itemType, itemString, keyPath) => {
-      const collectionRef = getCollectionRef(keyPath as string[]);
+      const collectionRef = getKeyCollectionRef(keyPath as string[]);
       if (keyPath.includes("filledPOMap")) {
         console.log("keyPath", keyPath);
       }
@@ -108,7 +129,7 @@ export const JsonView = React.memo(function JsonView({
         </span>
       );
     },
-    [getCollectionRef, queryPath]
+    [getKeyCollectionRef, queryPath]
   );
 
   return (
@@ -132,7 +153,7 @@ export const JsonView = React.memo(function JsonView({
           return value;
         }}
         valueRenderer={(valueAsString, value, ...keyPath) => {
-          const collectionRef = getCollectionRef(keyPath as string[]);
+          const collectionRef = getValueCollectionRef(keyPath as string[]);
 
           if (typeof value === "string" && value.startsWith("https://")) {
             return (
