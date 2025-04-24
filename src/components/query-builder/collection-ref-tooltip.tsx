@@ -15,17 +15,22 @@ import {
 } from "./types";
 import { useQueryAction } from "./query-action-context";
 import { saveQuery as saveQueryToDb } from "@/lib/db";
+import clsx from "clsx";
 
 interface CollectionRefTooltipProps {
+  className?: string;
   queryPath: string;
   collectionRef: string;
   value: string;
+  hideText?: boolean;
 }
 
 export function CollectionRefTooltip({
+  className,
   queryPath,
   collectionRef,
   value,
+  hideText = false,
 }: CollectionRefTooltipProps) {
   const { onSaveQuery, onCreateQuery, onExecuteQuery } = useQueryAction();
   const querySegments = queryPath.split("/");
@@ -101,7 +106,10 @@ export function CollectionRefTooltip({
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+            className={clsx(
+              "inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline",
+              className
+            )}
             onClick={handleCollectionRefClick}
             onDoubleClick={(e) => {
               e.stopPropagation();
@@ -109,7 +117,9 @@ export function CollectionRefTooltip({
               toast.success("Reference ID copied to clipboard");
             }}
           >
-            {value.length > 5 ? `${value.slice(0, 5)}...` : value}
+            {!hideText && (
+              <>{value.length > 5 ? `${value.slice(0, 5)}...` : value}</>
+            )}
             <ExternalLink className="h-3 w-3" />
           </button>
         </TooltipTrigger>

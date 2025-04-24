@@ -1,6 +1,9 @@
 import React from "react";
 import { GetItemString, JSONTree } from "react-json-tree";
 import { ClipboardButton } from "@/components/ui/clipboard-button";
+import { CollectionRefTooltip } from "./collection-ref-tooltip";
+import { FieldMetadata } from "@/schema";
+import dayjs from "dayjs";
 
 const jsonViewTheme = {
   scheme: "custom",
@@ -24,11 +27,15 @@ const jsonViewTheme = {
 };
 
 interface JsonViewProps {
+  schema: null | FieldMetadata | Record<string, FieldMetadata>;
   results: unknown;
+  queryPath: string;
 }
 
 export const JsonView = React.memo(function JsonView({
   results,
+  queryPath = "",
+  schema,
 }: JsonViewProps) {
   const defaultItemString: GetItemString = React.useCallback(
     (type, data, itemType, itemString) => {
@@ -44,6 +51,31 @@ export const JsonView = React.memo(function JsonView({
     },
     []
   );
+
+  const getCollectionRef = React.useCallback(
+    (path: (string | number)[]) => {
+      if (!queryPath || !schema || path.length === 0) return null;
+
+      let key = "";
+      let result;
+      const segments = [...path];
+      while (!result && segments.length) {
+        if (typeof segments[0] === "string") {
+          key = key ? `${key}.${segments[0]}` : segments[0];
+          result = schema[key as keyof typeof schema];
+        }
+        segments.shift();
+      }
+
+      if (result && typeof result === "object" && "collectionRef" in result) {
+        return result.collectionRef;
+      }
+
+      return null;
+    },
+    [queryPath, schema]
+  );
+
   return (
     <div className="bg-gray-50 rounded-sm p-4 h-full overflow-x-auto">
       <JSONTree
@@ -53,7 +85,20 @@ export const JsonView = React.memo(function JsonView({
           tree: { fontSize: "0.875rem", margin: 0 },
         }}
         getItemString={defaultItemString}
-        valueRenderer={(valueAsString, value) => {
+        postprocessValue={(value) => {
+          if (
+            typeof value === "object" &&
+            value &&
+            "toDate" in value &&
+            typeof value.toDate === "function"
+          ) {
+            return dayjs(value.toDate()).format("DD MMM BBBB [เวลา] HH:mm:ss");
+          }
+          return value;
+        }}
+        valueRenderer={(valueAsString, value, ...keyPath) => {
+          const collectionRef = getCollectionRef(keyPath as string[]);
+
           if (typeof value === "string" && value.startsWith("https://")) {
             return (
               <a
@@ -70,9 +115,19 @@ export const JsonView = React.memo(function JsonView({
               </a>
             );
           }
+
           return (
             <span className="inline-flex group ml-[0.5ch]">
               {valueAsString as string}{" "}
+              {collectionRef && (
+                <CollectionRefTooltip
+                  className="ml-1"
+                  collectionRef={collectionRef}
+                  queryPath={queryPath}
+                  value={String(value)}
+                  hideText
+                />
+              )}
               <ClipboardButton
                 value={value}
                 className="ml-1 invisible group-hover:visible"

@@ -2,18 +2,12 @@
 
 import React, { useMemo, useState } from "react";
 import { DocumentData } from "firebase/firestore";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TableIcon, BracketsIcon } from "lucide-react";
 import { QueryState } from "./types";
 import { JsonView } from "./json-view";
 import { TableView } from "./table-view";
-
-// Setup dayjs for timezone support
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import { fieldMetadata } from "@/schema";
 
 interface QueryResultsProps {
   isLoading: boolean;
@@ -115,7 +109,13 @@ export function QueryResults({
           viewMode === "table" ? (
             <TableView results={results} queryPath={currentQuery.source.path} />
           ) : (
-            <JsonView results={results} />
+            <JsonView
+              results={results}
+              queryPath={currentQuery.source.path}
+              schema={
+                fieldMetadata[currentQuery.source.path.split("/").reverse()[0]]
+              }
+            />
           )
         ) : (
           <p className="p-4 text-center text-gray-500">No results found</p>

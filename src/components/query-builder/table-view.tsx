@@ -356,7 +356,11 @@ export const TableView = React.memo(function TableView({
               </div>
 
               <div className="flex-1 overflow-auto">
-                <JsonView results={selectedObject?.value} />
+                <JsonView
+                  queryPath={queryPath}
+                  results={selectedObject?.value}
+                  schema={null}
+                />
               </div>
             </div>
           </Drawer.Content>
