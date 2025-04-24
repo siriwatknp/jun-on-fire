@@ -26,14 +26,22 @@ Store queries as tree in a state, then travese the tree to transform into Firest
 
 ### Collection Ref
 
-Support value type
+Support field types with `collectionRef` in schema:
 
-- [x] string
-- [x] string with format
-- [ ] array of ids
-- [ ] map (key of ids)
-- [ ] nested object with the above type
-- [ ] array of object with the above type
+- [x] string (single document reference)
+- [ ] array of strings (multiple document references)
+- [ ] map with string values (key-value pairs of document references)
+- [ ] nested object containing the above types
+- [ ] array of objects containing the above types
+
+When a field has `collectionRef` defined in the schema:
+
+1. The value should be displayed as a clickable link in both views:
+   - Table View: Show as a blue link with tooltip
+   - JSON View: Show as a blue link next to the value
+2. Clicking the link in either view creates a new query to fetch the referenced document(s)
+3. For array fields, each item in the array should be a separate clickable link in both views
+4. The collection reference path should support dynamic segments using `%s` which is replaced with the corresponding segment from the current query path
 
 ### Aggregation
 
