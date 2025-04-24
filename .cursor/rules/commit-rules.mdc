@@ -1,6 +1,7 @@
 ---
-description: When there is no error, ask to commit the code
+description: When there is no error, ask to commit the code (do not autocommit)
 globs: 
 alwaysApply: false
 ---
-Always use conventional commits when commiting the code.
+- Always ask for permission to commit the code.
+- Always use conventional commits when commiting the code.
