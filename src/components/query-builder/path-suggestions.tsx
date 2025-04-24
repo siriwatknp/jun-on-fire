@@ -75,7 +75,12 @@ export function PathSuggestions({
 
   const handleSaveValue = () => {
     if (inputValue !== value) {
-      onChange(inputValue);
+      if (inputValue.startsWith("/")) {
+        onChange(inputValue.slice(1));
+        setInputValue(inputValue.slice(1));
+      } else {
+        onChange(inputValue);
+      }
     }
   };
 
