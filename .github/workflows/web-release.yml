@@ -39,6 +39,12 @@ jobs:
                -H "Accept: application/vnd.github.v3.raw" \
                -o shared/schema-production.ts \
                https://api.github.com/repos/siriwatknp/scrapee/contents/shared/schema-production.ts
+      - name: Fetch types file
+        run: |
+          curl -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3.raw" \
+              -o src/renderer/types.d.ts \
+              https://api.github.com/repos/siriwatknp/scrapee/contents/src/renderer/types.d.ts
 
       - name: Install & Build
         run: npm ci && npm run build
