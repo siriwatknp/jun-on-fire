@@ -14,6 +14,7 @@ import {
   createDefaultQuery,
 } from "./types";
 import { useQueryAction } from "./query-action-context";
+import { saveQuery as saveQueryToDb } from "@/lib/db";
 
 interface CollectionRefTooltipProps {
   queryPath: string;
@@ -32,8 +33,6 @@ export function CollectionRefTooltip({
     .split("/")
     .map((item, index) => item.replaceAll("%s", querySegments[index]))
     .join("/");
-
-  console.log("parsedCollectionRef", parsedCollectionRef);
 
   const handleCollectionRefClick = async () => {
     try {
@@ -84,6 +83,10 @@ export function CollectionRefTooltip({
         updatedAt: Date.now(),
       };
 
+      // Save the new query to the database first
+      await saveQueryToDb(newQuery);
+
+      // Then update the UI state
       onCreateQuery(newQuery);
       onExecuteQuery(newQuery);
       toast.success(`Created new query for ${parsedCollectionRef}`);
