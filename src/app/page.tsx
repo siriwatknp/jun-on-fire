@@ -690,7 +690,7 @@ export default function Dashboard() {
       <SidebarProvider defaultOpen={true}>
         <Toaster position="top-right" richColors />
 
-        <div className="jun-layout">
+        <div className="jun-layout jun-layout-standalone">
           <div className="jun-edgeSidebar" style={{ boxShadow: "none" }}>
             <div className="jun-edgeContent">
               {/* Sidebar component - direct child of flex container */}
@@ -853,184 +853,182 @@ export default function Dashboard() {
           </div>
 
           {/* Main content area - direct sibling of Sidebar */}
-          <SidebarInset className="jun-content">
-            <div className="flex-1 overflow-auto p-4 min-h-[calc(100vh-4rem)]">
-              {isInitialLoading ? (
-                <div className="space-y-6 p-4">
-                  {/* Title and save button skeleton */}
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-4" />
-                      <Skeleton className="h-7 w-48" />
+          <SidebarInset className="jun-content flex flex-col p-3 gap-4">
+            {isInitialLoading ? (
+              <div className="space-y-6 p-4">
+                {/* Title and save button skeleton */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-7 w-48" />
+                  </div>
+                  <Skeleton className="h-9 w-28" />
+                </div>
+
+                {/* Content in side-by-side layout for desktop */}
+                <div className="flex flex-col xl:flex-row gap-4">
+                  {/* Query form skeleton - left side */}
+                  <div className="w-full space-y-4">
+                    {/* Source section skeleton */}
+                    <div className="space-y-2 border rounded-lg p-4">
+                      <Skeleton className="h-5 w-24" />
+                      <div className="flex space-x-4">
+                        <Skeleton className="h-10 w-36" />
+                        <Skeleton className="h-10 flex-1" />
+                      </div>
                     </div>
-                    <Skeleton className="h-9 w-28" />
+
+                    {/* Query options skeleton */}
+                    <div className="space-y-3 border rounded-lg p-4">
+                      <Skeleton className="h-5 w-32" />
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-24" />
+                      </div>
+                    </div>
+
+                    {/* Execute button skeleton */}
+                    <div className="flex justify-end">
+                      <Skeleton className="h-9 w-36" />
+                    </div>
                   </div>
 
-                  {/* Content in side-by-side layout for desktop */}
-                  <div className="flex flex-col xl:flex-row gap-4">
-                    {/* Query form skeleton - left side */}
-                    <div className="w-full space-y-4">
-                      {/* Source section skeleton */}
-                      <div className="space-y-2 border rounded-lg p-4">
-                        <Skeleton className="h-5 w-24" />
-                        <div className="flex space-x-4">
-                          <Skeleton className="h-10 w-36" />
-                          <Skeleton className="h-10 flex-1" />
+                  {/* Results area skeleton - right side */}
+                  <div className="w-full space-y-3">
+                    <Skeleton className="h-6 w-32" />
+                    <div className="border rounded-lg p-4">
+                      <div className="space-y-2">
+                        {/* Table header skeleton */}
+                        <div className="flex border-b pb-2">
+                          <Skeleton className="h-5 w-24 mr-4" />
+                          <Skeleton className="h-5 w-24 mr-4" />
+                          <Skeleton className="h-5 w-24" />
                         </div>
-                      </div>
-
-                      {/* Query options skeleton */}
-                      <div className="space-y-3 border rounded-lg p-4">
-                        <Skeleton className="h-5 w-32" />
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <Skeleton className="h-6 w-24" />
-                          <Skeleton className="h-6 w-24" />
-                          <Skeleton className="h-6 w-24" />
-                          <Skeleton className="h-6 w-24" />
-                          <Skeleton className="h-6 w-24" />
-                          <Skeleton className="h-6 w-24" />
-                        </div>
-                      </div>
-
-                      {/* Execute button skeleton */}
-                      <div className="flex justify-end">
-                        <Skeleton className="h-9 w-36" />
-                      </div>
-                    </div>
-
-                    {/* Results area skeleton - right side */}
-                    <div className="w-full space-y-3">
-                      <Skeleton className="h-6 w-32" />
-                      <div className="border rounded-lg p-4">
-                        <div className="space-y-2">
-                          {/* Table header skeleton */}
-                          <div className="flex border-b pb-2">
-                            <Skeleton className="h-5 w-24 mr-4" />
-                            <Skeleton className="h-5 w-24 mr-4" />
-                            <Skeleton className="h-5 w-24" />
+                        {/* Table rows skeleton */}
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex py-2">
+                            <Skeleton className="h-4 w-24 mr-4" />
+                            <Skeleton className="h-4 w-24 mr-4" />
+                            <Skeleton className="h-4 w-24" />
                           </div>
-                          {/* Table rows skeleton */}
-                          {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex py-2">
-                              <Skeleton className="h-4 w-24 mr-4" />
-                              <Skeleton className="h-4 w-24 mr-4" />
-                              <Skeleton className="h-4 w-24" />
-                            </div>
-                          ))}
-                        </div>
+                        ))}
                       </div>
                     </div>
                   </div>
                 </div>
-              ) : activeQueryId ? (
-                <div className="flex flex-col gap-4">
-                  {/* Title and Save button row */}
-                  <div className="flex justify-between items-center gap-2 flex-wrap">
-                    {/* Editable Title */}
-                    {isTitleEditing ? (
-                      <div className="flex items-center gap-2 flex-9999 mr-4">
-                        <Pencil className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                        <div className="flex-1 flex items-center">
-                          <input
-                            ref={titleInputRef}
-                            type="text"
-                            value={editedTitle}
-                            onChange={(e) => setEditedTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveTitleEdit();
-                              if (e.key === "Escape") cancelTitleEdit();
-                            }}
-                            className="flex-1 px-2 py-1 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
-                          />
-                          <Button
-                            size="sm"
-                            onClick={saveTitleEdit}
-                            className="rounded-l-none h-[34px]"
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        </div>
+              </div>
+            ) : activeQueryId ? (
+              <>
+                {/* Title and Save button row */}
+                <div className="flex justify-between items-center gap-2 flex-wrap">
+                  {/* Editable Title */}
+                  {isTitleEditing ? (
+                    <div className="flex items-center gap-2 flex-9999 mr-4">
+                      <Pencil className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                      <div className="flex-1 flex items-center">
+                        <input
+                          ref={titleInputRef}
+                          type="text"
+                          value={editedTitle}
+                          onChange={(e) => setEditedTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveTitleEdit();
+                            if (e.key === "Escape") cancelTitleEdit();
+                          }}
+                          className="flex-1 px-2 py-1 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={saveTitleEdit}
+                          className="rounded-l-none h-[34px]"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
                       </div>
-                    ) : (
-                      <div
-                        onClick={startTitleEdit}
-                        className="flex items-center gap-2 cursor-pointer group"
-                      >
-                        <Pencil className="h-4 w-4 text-gray-500" />
-                        <h2 className="text-lg font-medium group-hover:underline">
-                          {currentQuery.title}
-                        </h2>
-                      </div>
-                    )}
-                    <div className="flex-999" />
-                    <div className="flex gap-2 flex-1">
-                      <Button
-                        className="flex items-center gap-1 whitespace-nowrap flex-1"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSaveQuery}
-                        title="Save query"
-                      >
-                        <Save className="h-4 w-4" />
-                        Save Query
-                      </Button>
-                      <Button
-                        className="flex-1"
-                        variant="outline"
-                        size="sm"
-                        onClick={createNewQuery}
-                        disabled={isInitialLoading}
-                      >
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        New Query
-                      </Button>
                     </div>
-                  </div>
-
-                  {/* Content layout - switch to side-by-side on desktop */}
-                  <div className="flex gap-10 flex-col lg:flex-row">
-                    {/* Query Form - takes less space on desktop */}
-                    <div className="lg:min-w-[440px]">
-                      <QueryForm
-                        query={currentQuery}
-                        onChange={handleQueryChange}
-                        isLoading={isLoading}
-                      />
-                    </div>
-
-                    {/* Query Results - takes remaining space on desktop */}
-                    <div className="min-w-0 flex-1">
-                      <QueryResults
-                        isLoading={isLoading}
-                        error={error}
-                        results={results}
-                        currentQuery={currentQuery}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center p-8 max-w-md">
-                    <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <h3 className="text-lg font-medium mb-2">
-                      No query selected
-                    </h3>
-                    <p className="text-gray-500 mb-6">
-                      Select a query from the sidebar or create a new query to
-                      get started.
-                    </p>
-                    <Button
-                      onClick={createNewQuery}
-                      className="flex mx-auto items-center gap-2"
+                  ) : (
+                    <div
+                      onClick={startTitleEdit}
+                      className="flex items-center gap-2 cursor-pointer group"
                     >
-                      <PlusCircle className="h-4 w-4" />
-                      Create New Query
+                      <Pencil className="h-4 w-4 text-gray-500" />
+                      <h2 className="text-lg font-medium group-hover:underline">
+                        {currentQuery.title}
+                      </h2>
+                    </div>
+                  )}
+                  <div className="flex-999" />
+                  <div className="flex gap-2 flex-1">
+                    <Button
+                      className="flex items-center gap-1 whitespace-nowrap flex-1"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveQuery}
+                      title="Save query"
+                    >
+                      <Save className="h-4 w-4" />
+                      Save Query
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      variant="outline"
+                      size="sm"
+                      onClick={createNewQuery}
+                      disabled={isInitialLoading}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      New Query
                     </Button>
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Content layout - switch to side-by-side on desktop */}
+                <div className="flex gap-10 flex-col lg:flex-row min-h-0">
+                  {/* Query Form - takes less space on desktop */}
+                  <div className="lg:min-w-[440px]">
+                    <QueryForm
+                      query={currentQuery}
+                      onChange={handleQueryChange}
+                      isLoading={isLoading}
+                    />
+                  </div>
+
+                  {/* Query Results - takes remaining space on desktop */}
+                  <div className="min-w-0 flex-1 pb-4">
+                    <QueryResults
+                      isLoading={isLoading}
+                      error={error}
+                      results={results}
+                      currentQuery={currentQuery}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center p-8 max-w-md">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-medium mb-2">
+                    No query selected
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Select a query from the sidebar or create a new query to get
+                    started.
+                  </p>
+                  <Button
+                    onClick={createNewQuery}
+                    className="flex mx-auto items-center gap-2"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Create New Query
+                  </Button>
+                </div>
+              </div>
+            )}
           </SidebarInset>
         </div>
       </SidebarProvider>
