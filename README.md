@@ -49,7 +49,7 @@ Support email/password login to gain authentication access for queries data.
 - **Styling**: TailwindCSS
 - **Backend**: Firebase (Firestore, Authentication)
 
-## Installation
+## Get started
 
 1. Clone the repository:
    ```bash
@@ -63,11 +63,20 @@ Support email/password login to gain authentication access for queries data.
    ```bash
    npm install
    ```
-4. Set up environment variables by copying `.env.example` to `.env.local` and filling in the required values.
-5. Start the development server:
+4. Set up environment variables by copying `.env.example` to `.env` and filling in the required values.
+5. Run emulators
+   ```
+   npm run emulators
+   ```
+6. Populate mockup data and schema
+   ```
+   npm run populate
+   ```
+7. Start the development server:
    ```bash
    npm run dev
    ```
+8. Open `https://localhost:4416` to explore the query builder
 
 ## Directory Structure
 
@@ -76,12 +85,6 @@ Support email/password login to gain authentication access for queries data.
 - `src/lib/`: Utility functions or libraries used across the project.
 - `src/hooks/`: Custom React hooks.
 - `src/contexts/`: Context providers for managing global state.
-
-## Usage
-
-- Access the application at `http://localhost:4416` after starting the development server.
-- Use the Query Builder to construct and execute queries.
-- View query results in table or JSON format.
 
 ## Contributing
 

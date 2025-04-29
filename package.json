@@ -12,7 +12,8 @@
     "emulators": "cd functions && npm run build:watch & cd .. & firebase emulators:start --import .firebase-local-data --export-on-exit",
     "dev:all": "concurrently \"npm run dev\" \"npm run emulators\"",
     "deploy:functions": "cd functions && npm run build && cd .. && firebase deploy --only functions",
-    "test:deploy": "cd functions && npm run build && echo \"✅ Functions build successful and ready for deployment\""
+    "test:deploy": "cd functions && npm run build && echo \"✅ Functions build successful and ready for deployment\"",
+    "populate": "NODE_ENV=development NEXT_PUBLIC_FIREBASE_EMULATOR=false ts-node --project tsconfig-script.json scripts/populate-mock-data.ts"
   },
   "dependencies": {
     "@line/liff": "2.25.1",
@@ -58,9 +59,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "8.2.2",
+    "dotenv": "16.5.0",
     "eslint": "^9",
     "eslint-config-next": "15.2.2",
     "tailwindcss": "^4",
+    "ts-node": "10.9.2",
     "typescript": "^5"
   }
 }
