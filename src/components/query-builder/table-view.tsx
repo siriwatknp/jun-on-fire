@@ -35,6 +35,7 @@ import {
 import { getStorage, ref, getMetadata, getDownloadURL } from "firebase/storage";
 import { CollectionRefTooltip } from "./collection-ref-tooltip";
 import { JsonView } from "./json-view";
+import { dayjs } from "@/lib/dateTime";
 
 interface TableViewProps {
   results: DocumentData[];
@@ -158,6 +159,26 @@ export const TableView = React.memo(function TableView({
     }
     if (value === undefined) return "";
 
+    const entityType = queryPath.split("/").reverse()[0];
+    const fieldMeta = entityType && fieldMetadata[entityType]?.[key];
+    // Format Firestore Timestamp
+    if (
+      fieldMeta &&
+      typeof fieldMeta === "object" &&
+      fieldMeta.type === "timestamp" &&
+      value &&
+      typeof value === "object" &&
+      typeof (value as { toDate?: () => Date }).toDate === "function"
+    ) {
+      return (
+        <span className="inline-flex items-center rounded-full text-xs font-medium text-gray-700">
+          {dayjs((value as { toDate: () => Date }).toDate()).format(
+            "DD MMM BBBB, HH:mm:ss"
+          )}
+        </span>
+      );
+    }
+
     if (typeof value === "object" && value !== null) {
       const isArrayValue = isArrayLike(value);
       return (
@@ -193,8 +214,6 @@ export const TableView = React.memo(function TableView({
       );
     }
 
-    const entityType = queryPath.split("/").reverse()[0];
-    const fieldMeta = entityType && fieldMetadata[entityType]?.[key];
     if (
       fieldMeta &&
       typeof fieldMeta !== "string" &&

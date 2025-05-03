@@ -16,4 +16,4 @@ dayjs.extend(timezone);
 dayjs.extend(weekOfYear);
 dayjs.tz.setDefault("Asia/Bangkok");
 
-export {};
+export { dayjs };
