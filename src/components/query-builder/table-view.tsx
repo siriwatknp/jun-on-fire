@@ -40,6 +40,7 @@ import { dayjs } from "@/lib/dateTime";
 interface TableViewProps {
   results: DocumentData[];
   queryPath: string;
+  orderByField?: string;
 }
 
 // Helper functions
@@ -94,6 +95,7 @@ const getStorageRefFromUrl = (url: string) => {
 export const TableView = React.memo(function TableView({
   results,
   queryPath,
+  orderByField,
 }: TableViewProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -255,11 +257,20 @@ export const TableView = React.memo(function TableView({
       Object.keys(result).forEach((key) => keys.add(key));
     });
 
-    const sortedKeys = Array.from(keys).sort((a, b) => {
-      if (a === "id") return -1;
-      if (b === "id") return 1;
-      return a.localeCompare(b);
-    });
+    let sortedKeys = Array.from(keys);
+    // Move orderByField to the front if specified and present
+    if (orderByField && sortedKeys.includes(orderByField)) {
+      sortedKeys = [
+        orderByField,
+        ...sortedKeys.filter((k) => k !== orderByField),
+      ];
+    } else {
+      sortedKeys = sortedKeys.sort((a, b) => {
+        if (a === "id") return -1;
+        if (b === "id") return 1;
+        return a.localeCompare(b);
+      });
+    }
 
     return sortedKeys.map((key) => ({
       accessorKey: key,
@@ -268,7 +279,7 @@ export const TableView = React.memo(function TableView({
       ),
       cell: ({ row }) => formatCellValue(row.getValue(key), key),
     }));
-  }, [results]);
+  }, [results, orderByField]);
 
   const table = useReactTable({
     data: results,

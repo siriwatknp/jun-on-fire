@@ -107,7 +107,15 @@ export function QueryResults({
       <div className="border rounded overflow-auto flex-1">
         {results.length > 0 ? (
           viewMode === "table" ? (
-            <TableView results={results} queryPath={currentQuery.source.path} />
+            <TableView
+              results={results}
+              queryPath={currentQuery.source.path}
+              orderByField={
+                currentQuery.constraints.orderBy.enabled
+                  ? currentQuery.constraints.orderBy.field
+                  : undefined
+              }
+            />
           ) : (
             <JsonView
               results={results}
