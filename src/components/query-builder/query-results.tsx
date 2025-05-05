@@ -14,6 +14,9 @@ interface QueryResultsProps {
   error: string | null;
   results: DocumentData[] | null;
   currentQuery: QueryState;
+  fetchNextPage: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
 }
 
 type ViewMode = "table" | "json";
@@ -23,6 +26,9 @@ export function QueryResults({
   error,
   results,
   currentQuery,
+  fetchNextPage,
+  hasMore,
+  isLoadingMore,
 }: QueryResultsProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
@@ -115,6 +121,9 @@ export function QueryResults({
                   ? currentQuery.constraints.orderBy.field
                   : undefined
               }
+              fetchNextPage={fetchNextPage}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
             />
           ) : (
             <JsonView

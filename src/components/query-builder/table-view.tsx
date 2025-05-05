@@ -41,6 +41,9 @@ interface TableViewProps {
   results: DocumentData[];
   queryPath: string;
   orderByField?: string;
+  fetchNextPage: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
 }
 
 // Helper functions
@@ -96,6 +99,9 @@ export const TableView = React.memo(function TableView({
   results,
   queryPath,
   orderByField,
+  fetchNextPage,
+  hasMore,
+  isLoadingMore,
 }: TableViewProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -118,6 +124,30 @@ export const TableView = React.memo(function TableView({
       createdAt?: string;
     } | null;
   } | null>(null);
+
+  // Infinite scroll: ref and handler
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Scroll handler
+  const handleScroll = React.useCallback(() => {
+    const el = tableContainerRef.current;
+    if (!el || isLoadingMore || !hasMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    // If within 300px of bottom, fetch next page
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      fetchNextPage();
+    }
+  }, [fetchNextPage, isLoadingMore, hasMore]);
+
+  // Attach scroll handler
+  React.useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", handleScroll);
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+    };
+  }, [handleScroll]);
 
   const handleImageClick = async (url: string) => {
     try {
@@ -314,7 +344,11 @@ export const TableView = React.memo(function TableView({
         <DataTableViewOptions table={table} />
       </div>
 
-      <div className="min-w-full">
+      <div
+        className="min-w-full"
+        ref={tableContainerRef}
+        style={{ maxHeight: 600, overflowY: "auto" }}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -358,6 +392,18 @@ export const TableView = React.memo(function TableView({
             )}
           </TableBody>
         </Table>
+        {/* Infinite scroll loading indicator */}
+        {isLoadingMore && (
+          <div className="flex justify-center py-2 text-gray-500 text-sm">
+            Loading more...
+          </div>
+        )}
+        {/* No more data indicator */}
+        {!hasMore && results.length > 0 && (
+          <div className="flex justify-center py-2 text-gray-400 text-xs">
+            End of results
+          </div>
+        )}
       </div>
 
       <Drawer.Root
