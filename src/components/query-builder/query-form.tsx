@@ -1061,8 +1061,9 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>No Limit Specified</AlertDialogTitle>
                 <AlertDialogDescription>
-                  You haven&apos;t set a limit for this query. This might return
-                  a large number of documents. Do you want to continue?
+                  You haven&apos;t set a limit for this query. The default limit
+                  of 50 will be used. This might return a large number of
+                  documents if you keep scrolling. Do you want to continue?
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
