@@ -85,13 +85,12 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true); // Track initial loading state
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<DocumentData[] | null>(null);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // --- Infinite scroll paging state ---
-  // const [pagingResults, setPagingResults] = useState<DocumentData[]>([]); // Will be used in next steps
+  const [pagingResults, setPagingResults] = useState<DocumentData[]>([]);
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -150,7 +149,6 @@ export default function Dashboard() {
   const handleExecuteQuery = useCallback((queryToExecute: QueryState) => {
     setIsLoading(true);
     setError(null);
-    setResults(null);
 
     const executeQueryAsync = async () => {
       try {
@@ -271,7 +269,7 @@ export default function Dashboard() {
             });
           }
 
-          setResults([formattedResults]);
+          setPagingResults([formattedResults]);
         } else {
           // For non-aggregation queries, use the regular approach
           // Build the final query
@@ -290,7 +288,7 @@ export default function Dashboard() {
             });
           });
 
-          setResults(queryResults);
+          setPagingResults(queryResults);
         }
       } catch (err) {
         console.error("Error executing query:", err);
@@ -312,7 +310,6 @@ export default function Dashboard() {
       setCurrentQuery({ ...query });
       setIsLoading(false);
       setError(null);
-      setResults(null);
       setActiveQueryId(query.id);
       setIsTitleEditing(false); // Cancel any ongoing title editing
 
@@ -396,7 +393,6 @@ export default function Dashboard() {
       setCurrentQuery(newDraftQuery);
       setIsLoading(false);
       setError(null);
-      setResults(null);
 
       // Add to saved queries list and save to IndexedDB
       const updatedQueries = [...savedQueries, newDraftQuery];
@@ -526,8 +522,6 @@ export default function Dashboard() {
       if (activeQueryId === id) {
         setActiveQueryId(null);
         setCurrentQuery(createDefaultQuery()); // Use default query instead of null
-        setResults(null);
-        setError(null);
       }
     } catch (error) {
       console.error("Error deleting query:", error);
@@ -667,7 +661,7 @@ export default function Dashboard() {
         newResults.push({ id: doc.id, path: doc.ref.path, ...doc.data() });
         newLastDoc = doc;
       });
-      // setPagingResults((prev) => [...prev, ...newResults]);
+      setPagingResults((prev) => [...prev, ...newResults]);
       setLastDoc(newLastDoc);
       setHasMore(newResults.length === limitValue);
     } catch (err) {
@@ -1002,8 +996,11 @@ export default function Dashboard() {
                     <QueryResults
                       isLoading={isLoading}
                       error={error}
-                      results={results}
+                      results={pagingResults}
                       currentQuery={currentQuery}
+                      fetchNextPage={onFetchNextPage}
+                      hasMore={hasMore}
+                      isLoadingMore={isLoadingMore}
                     />
                   </div>
                 </div>
