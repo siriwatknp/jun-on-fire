@@ -5,6 +5,7 @@ interface QueryActionContextValue {
   onSaveQuery: () => Promise<void>;
   onCreateQuery: (query: QueryState) => void;
   onExecuteQuery: (query: QueryState) => void;
+  onFetchNextPage: () => Promise<void>;
 }
 
 const QueryActionContext = createContext<QueryActionContextValue | null>(null);

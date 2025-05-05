@@ -26,6 +26,8 @@ import {
   sum,
   average,
   Timestamp,
+  startAfter,
+  DocumentSnapshot,
 } from "firebase/firestore";
 import { db as firestoreDb } from "@/lib/firebase";
 import { Toaster, toast } from "sonner";
@@ -87,6 +89,12 @@ export default function Dashboard() {
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Infinite scroll paging state ---
+  // const [pagingResults, setPagingResults] = useState<DocumentData[]>([]); // Will be used in next steps
+  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Saved queries management
   const [savedQueries, setSavedQueries] = useState<QueryState[]>([]);
@@ -159,160 +167,8 @@ export default function Dashboard() {
           baseQuery = collectionGroup(firestoreDb, queryToExecute.source.path);
         }
 
-        // Create an array to hold query constraints
-        const constraints = [];
-
-        // Add where clauses if enabled
-        if (queryToExecute.constraints.where.enabled) {
-          queryToExecute.constraints.where.clauses.forEach(
-            (clause: WhereClause) => {
-              if (clause.field && clause.value !== undefined) {
-                // Validate null usage with operators - prevent invalid combinations
-                if (
-                  clause.valueType === "null" &&
-                  ["<", "<=", ">", ">="].includes(clause.operator)
-                ) {
-                  throw new Error(
-                    `Invalid operator "${clause.operator}" with null value. Use "==" or "!=" instead.`
-                  );
-                }
-
-                // Parse value based on its type
-                let parsedValue;
-
-                // Handle array operators separately
-                if (
-                  ["in", "not-in", "array-contains-any"].includes(
-                    clause.operator
-                  )
-                ) {
-                  try {
-                    // Attempt to parse as JSON array if it's a string representing an array
-                    let parsedItems;
-                    try {
-                      parsedItems = JSON.parse(clause.value);
-                    } catch {
-                      // If not valid JSON, treat as a comma-separated list
-                      parsedItems = clause.value
-                        .split(",")
-                        .map((item: string) => item.trim());
-                    }
-
-                    // Ensure it's an array
-                    const arrayValue = Array.isArray(parsedItems)
-                      ? parsedItems
-                      : [parsedItems];
-
-                    // Convert array items based on valueType
-                    if (clause.valueType === "number") {
-                      parsedValue = arrayValue.map((item) => Number(item));
-                    } else if (clause.valueType === "boolean") {
-                      parsedValue = arrayValue.map((item) =>
-                        item === "true" || item === true ? true : false
-                      );
-                    } else if (clause.valueType === "null") {
-                      parsedValue = arrayValue.map(() => null);
-                    } else if (clause.valueType === "timestamp") {
-                      try {
-                        parsedValue = arrayValue.map((item) => {
-                          const date = new Date(item);
-                          if (isNaN(date.getTime())) {
-                            throw new Error(
-                              `Invalid date value in array: ${item}`
-                            );
-                          }
-                          return Timestamp.fromDate(date);
-                        });
-                      } catch (e) {
-                        console.error("Error parsing timestamp array:", e);
-                        throw new Error(
-                          `Invalid timestamp format in array. Use ISO format (YYYY-MM-DDTHH:MM:SS.sssZ).`
-                        );
-                      }
-                    } else {
-                      // Default to string
-                      parsedValue = arrayValue;
-                    }
-
-                    constraints.push(
-                      where(
-                        clause.field,
-                        clause.operator as WhereFilterOp,
-                        parsedValue
-                      )
-                    );
-                  } catch (e) {
-                    console.error("Error parsing array value:", e);
-                    throw new Error(
-                      `Invalid value for ${clause.operator} operator. Expected an array.`
-                    );
-                  }
-                } else {
-                  // For non-array operators, handle value based on its type
-                  if (clause.valueType === "number") {
-                    parsedValue = Number(clause.value);
-                    if (isNaN(parsedValue)) {
-                      throw new Error(`Invalid number value: ${clause.value}`);
-                    }
-                  } else if (clause.valueType === "boolean") {
-                    parsedValue = clause.value === "true";
-                  } else if (clause.valueType === "null") {
-                    parsedValue = null;
-                  } else if (clause.valueType === "timestamp") {
-                    try {
-                      // Convert the ISO string or date string to a Firestore Timestamp
-                      const date = new Date(clause.value);
-                      if (isNaN(date.getTime())) {
-                        throw new Error(`Invalid date value: ${clause.value}`);
-                      }
-                      parsedValue = Timestamp.fromDate(date);
-                    } catch (e) {
-                      console.error("Error parsing timestamp:", e);
-                      throw new Error(
-                        `Invalid timestamp format: ${clause.value}. Use ISO format (YYYY-MM-DDTHH:MM:SS.sssZ).`
-                      );
-                    }
-                  } else {
-                    // Default to string
-                    parsedValue = clause.value;
-                  }
-
-                  constraints.push(
-                    where(
-                      clause.field,
-                      clause.operator as WhereFilterOp,
-                      parsedValue
-                    )
-                  );
-                }
-              }
-            }
-          );
-        }
-
-        // Add orderBy if enabled
-        if (
-          queryToExecute.constraints.orderBy.enabled &&
-          queryToExecute.constraints.orderBy.field
-        ) {
-          constraints.push(
-            firestoreOrderBy(
-              queryToExecute.constraints.orderBy.field,
-              queryToExecute.constraints.orderBy.direction
-            )
-          );
-        }
-
-        // Add limit if enabled
-        if (
-          queryToExecute.constraints.limit.enabled &&
-          queryToExecute.constraints.limit.value
-        ) {
-          const limitValue = Number(queryToExecute.constraints.limit.value);
-          if (!isNaN(limitValue) && limitValue > 0) {
-            constraints.push(firestoreLimit(limitValue));
-          }
-        }
+        // Use the refactored helper for constraints and limit
+        const { constraints } = buildFirestoreConstraints(queryToExecute);
 
         // Check if we're doing an aggregation query
         const isAggregationQuery =
@@ -679,12 +535,156 @@ export default function Dashboard() {
     }
   };
 
+  // Helper to build Firestore query constraints (for reuse)
+  const buildFirestoreConstraints = (queryToExecute: QueryState) => {
+    const constraints = [];
+    let limitValue = 50;
+    // Add where clauses if enabled
+    if (queryToExecute.constraints.where.enabled) {
+      queryToExecute.constraints.where.clauses.forEach(
+        (clause: WhereClause) => {
+          if (clause.field && clause.value !== undefined) {
+            // Validate null usage with operators - prevent invalid combinations
+            if (
+              clause.valueType === "null" &&
+              ["<", "<=", ">", ">="].includes(clause.operator)
+            ) {
+              throw new Error(
+                `Invalid operator "${clause.operator}" with null value. Use "==" or "!=" instead.`
+              );
+            }
+            let parsedValue;
+            if (
+              ["in", "not-in", "array-contains-any"].includes(clause.operator)
+            ) {
+              let parsedItems;
+              try {
+                parsedItems = JSON.parse(clause.value);
+              } catch {
+                parsedItems = clause.value
+                  .split(",")
+                  .map((item: string) => item.trim());
+              }
+              const arrayValue = Array.isArray(parsedItems)
+                ? parsedItems
+                : [parsedItems];
+              if (clause.valueType === "number") {
+                parsedValue = arrayValue.map((item) => Number(item));
+              } else if (clause.valueType === "boolean") {
+                parsedValue = arrayValue.map((item) =>
+                  item === "true" || item === true ? true : false
+                );
+              } else if (clause.valueType === "null") {
+                parsedValue = arrayValue.map(() => null);
+              } else if (clause.valueType === "timestamp") {
+                parsedValue = arrayValue.map((item) =>
+                  Timestamp.fromDate(new Date(item))
+                );
+              } else {
+                parsedValue = arrayValue;
+              }
+              constraints.push(
+                where(
+                  clause.field,
+                  clause.operator as WhereFilterOp,
+                  parsedValue
+                )
+              );
+            } else {
+              if (clause.valueType === "number") {
+                parsedValue = Number(clause.value);
+              } else if (clause.valueType === "boolean") {
+                parsedValue = clause.value === "true";
+              } else if (clause.valueType === "null") {
+                parsedValue = null;
+              } else if (clause.valueType === "timestamp") {
+                parsedValue = Timestamp.fromDate(new Date(clause.value));
+              } else {
+                parsedValue = clause.value;
+              }
+              constraints.push(
+                where(
+                  clause.field,
+                  clause.operator as WhereFilterOp,
+                  parsedValue
+                )
+              );
+            }
+          }
+        }
+      );
+    }
+    // Add orderBy if enabled
+    if (
+      queryToExecute.constraints.orderBy.enabled &&
+      queryToExecute.constraints.orderBy.field
+    ) {
+      constraints.push(
+        firestoreOrderBy(
+          queryToExecute.constraints.orderBy.field,
+          queryToExecute.constraints.orderBy.direction
+        )
+      );
+    }
+    // Add limit (for paging, always use default 50 if not set)
+    if (
+      queryToExecute.constraints.limit.enabled &&
+      queryToExecute.constraints.limit.value
+    ) {
+      const userLimit = Number(queryToExecute.constraints.limit.value);
+      if (!isNaN(userLimit) && userLimit > 0) {
+        limitValue = userLimit;
+      }
+    }
+    constraints.push(firestoreLimit(limitValue));
+    return { constraints, limitValue };
+  };
+
+  // --- Infinite scroll: fetch next page ---
+  const onFetchNextPage = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      let baseQuery;
+      if (currentQuery.source.type === "collection") {
+        baseQuery = collection(firestoreDb, currentQuery.source.path);
+      } else {
+        baseQuery = collectionGroup(firestoreDb, currentQuery.source.path);
+      }
+      const { constraints, limitValue } =
+        buildFirestoreConstraints(currentQuery);
+      // Add startAfter if we have a lastDoc
+      let firestoreQuery;
+      if (lastDoc) {
+        firestoreQuery = query(baseQuery, ...constraints, startAfter(lastDoc));
+      } else {
+        firestoreQuery = query(baseQuery, ...constraints);
+      }
+      const querySnapshot = await getDocs(firestoreQuery);
+      const newResults: DocumentData[] = [];
+      let newLastDoc = null;
+      querySnapshot.forEach((doc) => {
+        newResults.push({ id: doc.id, path: doc.ref.path, ...doc.data() });
+        newLastDoc = doc;
+      });
+      // setPagingResults((prev) => [...prev, ...newResults]);
+      setLastDoc(newLastDoc);
+      setHasMore(newResults.length === limitValue);
+    } catch (err) {
+      console.error("Error fetching next page:", err);
+      toast.error("Failed to fetch more results");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentQuery, isLoadingMore, hasMore, lastDoc]);
+
   return (
     <QueryActionProvider
       value={{
         onSaveQuery: handleSaveQuery,
         onCreateQuery: handleCreateQuery,
         onExecuteQuery: handleExecuteQuery,
+        onFetchNextPage,
       }}
     >
       <SidebarProvider defaultOpen={true}>
