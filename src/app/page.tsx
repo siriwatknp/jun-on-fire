@@ -273,6 +273,8 @@ export default function Dashboard() {
         } else {
           // For non-aggregation queries, use the regular approach
           // Build the final query
+          const { constraints, limitValue } =
+            buildFirestoreConstraints(queryToExecute);
           const firestoreQuery = query(baseQuery, ...constraints);
 
           // Execute the query
@@ -280,15 +282,20 @@ export default function Dashboard() {
 
           // Process the results
           const queryResults: DocumentData[] = [];
+          let newLastDoc = null;
           querySnapshot.forEach((doc) => {
             queryResults.push({
               id: doc.id,
               path: doc.ref.path,
               ...doc.data(),
             });
+            newLastDoc = doc;
           });
 
           setPagingResults(queryResults);
+          // If the result size is less than the limit, there are no more results to fetch
+          setHasMore(queryResults.length === limitValue);
+          setLastDoc(newLastDoc);
         }
       } catch (err) {
         console.error("Error executing query:", err);
@@ -663,6 +670,7 @@ export default function Dashboard() {
       });
       setPagingResults((prev) => [...prev, ...newResults]);
       setLastDoc(newLastDoc);
+      // If the result size is less than the limit, there are no more results to fetch
       setHasMore(newResults.length === limitValue);
     } catch (err) {
       console.error("Error fetching next page:", err);
