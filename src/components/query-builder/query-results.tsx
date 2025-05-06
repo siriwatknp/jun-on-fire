@@ -14,7 +14,6 @@ interface QueryResultsProps {
   error: string | null;
   results: DocumentData[] | null;
   currentQuery: QueryState;
-  fetchNextPage: () => void;
   hasMore: boolean;
   isLoadingMore: boolean;
 }
@@ -26,7 +25,6 @@ export function QueryResults({
   error,
   results,
   currentQuery,
-  fetchNextPage,
   hasMore,
   isLoadingMore,
 }: QueryResultsProps) {
@@ -121,7 +119,6 @@ export function QueryResults({
                   ? currentQuery.constraints.orderBy.field
                   : undefined
               }
-              fetchNextPage={fetchNextPage}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
             />

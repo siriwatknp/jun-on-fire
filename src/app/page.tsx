@@ -1006,7 +1006,6 @@ export default function Dashboard() {
                       error={error}
                       results={pagingResults}
                       currentQuery={currentQuery}
-                      fetchNextPage={onFetchNextPage}
                       hasMore={hasMore}
                       isLoadingMore={isLoadingMore}
                     />
