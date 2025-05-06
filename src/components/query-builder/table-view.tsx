@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { DocumentData } from "firebase/firestore";
 import { fieldMetadata } from "@/schema";
+import { useQueryAction } from "./query-action-context";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -41,7 +42,6 @@ interface TableViewProps {
   results: DocumentData[];
   queryPath: string;
   orderByField?: string;
-  fetchNextPage: () => void;
   hasMore: boolean;
   isLoadingMore: boolean;
 }
@@ -95,11 +95,52 @@ const getStorageRefFromUrl = (url: string) => {
   return ref(storage, path);
 };
 
+// Container for infinite scroll logic
+function TableScrollContainer({
+  hasMore,
+  isLoadingMore,
+  children,
+}: {
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  children: React.ReactNode;
+}) {
+  const { onFetchNextPage } = useQueryAction();
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleScroll = React.useCallback(() => {
+    const el = tableContainerRef.current;
+    if (!el || isLoadingMore || !hasMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      onFetchNextPage();
+    }
+  }, [onFetchNextPage, isLoadingMore, hasMore]);
+
+  React.useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", handleScroll);
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+    };
+  }, [handleScroll]);
+
+  return (
+    <div
+      className="min-w-full"
+      ref={tableContainerRef}
+      style={{ maxHeight: 600, overflowY: "auto" }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export const TableView = React.memo(function TableView({
   results,
   queryPath,
   orderByField,
-  fetchNextPage,
   hasMore,
   isLoadingMore,
 }: TableViewProps) {
@@ -124,30 +165,6 @@ export const TableView = React.memo(function TableView({
       createdAt?: string;
     } | null;
   } | null>(null);
-
-  // Infinite scroll: ref and handler
-  const tableContainerRef = React.useRef<HTMLDivElement>(null);
-
-  // Scroll handler
-  const handleScroll = React.useCallback(() => {
-    const el = tableContainerRef.current;
-    if (!el || isLoadingMore || !hasMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    // If within 300px of bottom, fetch next page
-    if (scrollHeight - scrollTop - clientHeight < 300) {
-      fetchNextPage();
-    }
-  }, [fetchNextPage, isLoadingMore, hasMore]);
-
-  // Attach scroll handler
-  React.useEffect(() => {
-    const el = tableContainerRef.current;
-    if (!el) return;
-    el.addEventListener("scroll", handleScroll);
-    return () => {
-      el.removeEventListener("scroll", handleScroll);
-    };
-  }, [handleScroll]);
 
   const handleImageClick = async (url: string) => {
     try {
@@ -344,11 +361,7 @@ export const TableView = React.memo(function TableView({
         <DataTableViewOptions table={table} />
       </div>
 
-      <div
-        className="min-w-full"
-        ref={tableContainerRef}
-        style={{ maxHeight: 600, overflowY: "auto" }}
-      >
+      <TableScrollContainer hasMore={hasMore} isLoadingMore={isLoadingMore}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -404,7 +417,7 @@ export const TableView = React.memo(function TableView({
             End of results
           </div>
         )}
-      </div>
+      </TableScrollContainer>
 
       <Drawer.Root
         direction="right"
