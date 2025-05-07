@@ -13,7 +13,14 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+  TableHeader,
+  TableHead,
+} from "@/components/ui/table";
 import { Search, ExternalLink, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTableColumnHeader } from "./data-table-column-header";
@@ -341,7 +348,7 @@ export const TableView = React.memo(function TableView({
         }}
       >
         <table className="w-full caption-bottom text-sm">
-          <thead
+          <TableHeader
             style={{
               position: "sticky",
               top: 0,
@@ -350,21 +357,24 @@ export const TableView = React.memo(function TableView({
             }}
           >
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
+              <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} style={{ width: header.getSize() }}>
+                  <TableHead
+                    key={header.id}
+                    style={{ width: header.getSize() }}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </thead>
-          <tbody
+          </TableHeader>
+          <TableBody
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
               position: "relative",
@@ -374,7 +384,7 @@ export const TableView = React.memo(function TableView({
               rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = rows[virtualRow.index];
                 return (
-                  <tr
+                  <TableRow
                     key={row.id}
                     data-index={virtualRow.index}
                     ref={(node) => rowVirtualizer.measureElement(node)}
@@ -385,7 +395,7 @@ export const TableView = React.memo(function TableView({
                     }}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td
+                      <TableCell
                         key={cell.id}
                         style={{ width: cell.column.getSize() }}
                       >
@@ -393,19 +403,22 @@ export const TableView = React.memo(function TableView({
                           cell.column.columnDef.cell,
                           cell.getContext()
                         )}
-                      </td>
+                      </TableCell>
                     ))}
-                  </tr>
+                  </TableRow>
                 );
               })
             ) : (
-              <tr>
-                <td colSpan={columns.length} className="h-24 text-center">
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No results.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
+          </TableBody>
         </table>
         {/* Infinite scroll loading indicator */}
         {isLoadingMore && (
