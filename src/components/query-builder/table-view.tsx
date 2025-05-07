@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useDeferredValue } from "react";
 import { DocumentData } from "firebase/firestore";
 import { fieldMetadata } from "@/schema";
 import { useQueryAction } from "./query-action-context";
@@ -13,14 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Search, ExternalLink, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTableColumnHeader } from "./data-table-column-header";
@@ -37,6 +30,7 @@ import { getStorage, ref, getMetadata, getDownloadURL } from "firebase/storage";
 import { CollectionRefTooltip } from "./collection-ref-tooltip";
 import { JsonView } from "./json-view";
 import { dayjs } from "@/lib/dateTime";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface TableViewProps {
   results: DocumentData[];
@@ -95,48 +89,6 @@ const getStorageRefFromUrl = (url: string) => {
   return ref(storage, path);
 };
 
-// Container for infinite scroll logic
-function TableScrollContainer({
-  hasMore,
-  isLoadingMore,
-  children,
-}: {
-  hasMore: boolean;
-  isLoadingMore: boolean;
-  children: React.ReactNode;
-}) {
-  const { onFetchNextPage } = useQueryAction();
-  const tableContainerRef = React.useRef<HTMLDivElement>(null);
-
-  const handleScroll = React.useCallback(() => {
-    const el = tableContainerRef.current;
-    if (!el || isLoadingMore || !hasMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    if (scrollHeight - scrollTop - clientHeight < 300) {
-      onFetchNextPage();
-    }
-  }, [onFetchNextPage, isLoadingMore, hasMore]);
-
-  React.useEffect(() => {
-    const el = tableContainerRef.current;
-    if (!el) return;
-    el.addEventListener("scroll", handleScroll);
-    return () => {
-      el.removeEventListener("scroll", handleScroll);
-    };
-  }, [handleScroll]);
-
-  return (
-    <div
-      className="min-w-full"
-      ref={tableContainerRef}
-      style={{ maxHeight: 600, overflowY: "auto" }}
-    >
-      {children}
-    </div>
-  );
-}
-
 export const TableView = React.memo(function TableView({
   results,
   queryPath,
@@ -149,7 +101,8 @@ export const TableView = React.memo(function TableView({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     path: false,
   });
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const deferredInputValue = useDeferredValue(inputValue);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedObject, setSelectedObject] = useState<{
     value: unknown;
@@ -165,6 +118,8 @@ export const TableView = React.memo(function TableView({
       createdAt?: string;
     } | null;
   } | null>(null);
+
+  const { onFetchNextPage } = useQueryAction();
 
   const handleImageClick = async (url: string) => {
     try {
@@ -335,15 +290,24 @@ export const TableView = React.memo(function TableView({
       sorting,
       columnFilters,
       columnVisibility,
-      globalFilter,
+      globalFilter: deferredInputValue,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+  });
+
+  // Table virtualization setup
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const rows = table.getRowModel().rows;
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    estimateSize: () => 40, // px, adjust as needed
+    getScrollElement: () => tableContainerRef.current,
+    overscan: 5,
   });
 
   return (
@@ -353,58 +317,96 @@ export const TableView = React.memo(function TableView({
           <Search className="h-4 w-4 text-gray-500" />
           <Input
             placeholder="Search all columns..."
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
+            value={inputValue}
+            onChange={(event) => setInputValue(event.target.value)}
             className="h-8 w-[150px] lg:w-[250px]"
           />
         </div>
         <DataTableViewOptions table={table} />
       </div>
 
-      <TableScrollContainer hasMore={hasMore} isLoadingMore={isLoadingMore}>
-        <Table>
-          <TableHeader>
+      {/* Virtualized Table Container */}
+      <div
+        className="min-w-full"
+        ref={tableContainerRef}
+        style={{ maxHeight: 600, overflowY: "auto", position: "relative" }}
+        onScroll={() => {
+          // Infinite scroll logic
+          const el = tableContainerRef.current;
+          if (!el || isLoadingMore || !hasMore) return;
+          const { scrollTop, scrollHeight, clientHeight } = el;
+          if (scrollHeight - scrollTop - clientHeight < 300) {
+            onFetchNextPage();
+          }
+        }}
+      >
+        <table className="w-full caption-bottom text-sm">
+          <thead
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 2,
+              background: "white",
+            }}
+          >
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <th key={header.id} style={{ width: header.getSize() }}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                  </TableHead>
+                  </th>
                 ))}
-              </TableRow>
+              </tr>
             ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+          </thead>
+          <tbody
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().length ? (
+              rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                return (
+                  <tr
+                    key={row.id}
+                    data-index={virtualRow.index}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
+                    style={{
+                      position: "absolute",
+                      transform: `translateY(${virtualRow.start}px)`,
+                      width: "100%",
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        style={{ width: cell.column.getSize() }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+              <tr>
+                <td colSpan={columns.length} className="h-24 text-center">
                   No results.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
         {/* Infinite scroll loading indicator */}
         {isLoadingMore && (
           <div className="flex justify-center py-2 text-gray-500 text-sm">
@@ -417,7 +419,7 @@ export const TableView = React.memo(function TableView({
             End of results
           </div>
         )}
-      </TableScrollContainer>
+      </div>
 
       <Drawer.Root
         direction="right"
