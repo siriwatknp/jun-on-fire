@@ -281,13 +281,27 @@ export const TableView = React.memo(function TableView({
       });
     }
 
-    return sortedKeys.map((key) => ({
-      accessorKey: key,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={key} />
-      ),
-      cell: ({ row }) => formatCellValue(row.getValue(key), key),
-    }));
+    return sortedKeys.map((key) => {
+      const headerText = key;
+      const widthCh = headerText.length;
+      return {
+        accessorKey: key,
+        header: ({ column }) => (
+          <TableHead
+            style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 120px)` }}
+          >
+            <DataTableColumnHeader column={column} title={key} />
+          </TableHead>
+        ),
+        cell: ({ row }) => (
+          <TableCell
+            style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 120px)` }}
+          >
+            {formatCellValue(row.getValue(key), key)}
+          </TableCell>
+        ),
+      };
+    });
   }, [results, orderByField]);
 
   const table = useReactTable({
@@ -347,7 +361,8 @@ export const TableView = React.memo(function TableView({
           }
         }}
       >
-        <table className="w-full caption-bottom text-sm">
+        {/* Do not change to <Table>, otherwise the sticky table head will not work */}
+        <table className="w-full caption-bottom table-fixed text-sm">
           <TableHeader
             style={{
               position: "sticky",
@@ -358,19 +373,12 @@ export const TableView = React.memo(function TableView({
           >
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    style={{ width: header.getSize() }}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) =>
+                  flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )
+                )}
               </TableRow>
             ))}
           </TableHeader>
@@ -394,17 +402,14 @@ export const TableView = React.memo(function TableView({
                       width: "100%",
                     }}
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        {flexRender(
+                    {row
+                      .getVisibleCells()
+                      .map((cell) =>
+                        flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
+                        )
+                      )}
                   </TableRow>
                 );
               })
