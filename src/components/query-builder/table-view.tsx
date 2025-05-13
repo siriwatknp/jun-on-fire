@@ -288,14 +288,16 @@ export const TableView = React.memo(function TableView({
         accessorKey: key,
         header: ({ column }) => (
           <TableHead
-            style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 120px)` }}
+            className="inline-block"
+            style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
           >
             <DataTableColumnHeader column={column} title={key} />
           </TableHead>
         ),
         cell: ({ row }) => (
           <TableCell
-            style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 120px)` }}
+            className="inline-block"
+            style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
           >
             {formatCellValue(row.getValue(key), key)}
           </TableCell>
@@ -362,7 +364,7 @@ export const TableView = React.memo(function TableView({
         }}
       >
         {/* Do not change to <Table>, otherwise the sticky table head will not work */}
-        <table className="w-full caption-bottom table-fixed text-sm">
+        <table className="w-max caption-bottom table-fixed text-sm">
           <TableHeader
             style={{
               position: "sticky",
