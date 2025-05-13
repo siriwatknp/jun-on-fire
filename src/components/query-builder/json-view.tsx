@@ -30,13 +30,16 @@ interface JsonViewProps {
   schema: null | FieldMetadata | Record<string, FieldMetadata>;
   results: unknown;
   queryPath: string;
+  initialKeyField?: string;
 }
 
 export const JsonView = React.memo(function JsonView({
   results,
   queryPath = "",
   schema,
+  initialKeyField,
 }: JsonViewProps) {
+  console.log("results", results);
   const getKeyCollectionRef = React.useCallback(
     (path: (string | number)[]) => {
       if (!queryPath || !schema || path.length === 0) return null;
@@ -44,7 +47,10 @@ export const JsonView = React.memo(function JsonView({
       let keyLastTemplate = ""; // for { foo.map.baz.map.field: "..." }
       let result;
       let count = 1;
-      const segments = [...path];
+      const segments =
+        initialKeyField && path.length > 0
+          ? [path[0], initialKeyField, ...path.slice(1)]
+          : [...path];
       while (!result && segments.length) {
         if (typeof segments[0] === "string") {
           if (count % 2 === 1) {
@@ -70,7 +76,7 @@ export const JsonView = React.memo(function JsonView({
 
       return null;
     },
-    [queryPath, schema]
+    [queryPath, schema, initialKeyField]
   );
   const getValueCollectionRef = React.useCallback(
     (path: (string | number)[]) => {
@@ -80,7 +86,10 @@ export const JsonView = React.memo(function JsonView({
       let keyTemplate = ""; // for { foo.bar.baz.%s.field: "..." }
       let result;
       let count = 1;
-      const segments = [...path];
+      const segments =
+        initialKeyField && path.length > 0
+          ? [path[0], initialKeyField, ...path.slice(1)]
+          : [...path];
       while (!result && segments.length) {
         if (typeof segments[0] === "string") {
           key = key ? `${segments[0]}.${key}` : segments[0];
@@ -109,7 +118,7 @@ export const JsonView = React.memo(function JsonView({
 
       return null;
     },
-    [queryPath, schema]
+    [queryPath, schema, initialKeyField]
   );
 
   const defaultItemString: GetItemString = React.useCallback(

@@ -301,7 +301,7 @@ export const TableView = React.memo(function TableView({
         ),
         cell: ({ row }) => (
           <TableCell
-            className="inline-block"
+            className="inline-block whitespace-nowrap overflow-ellipsis overflow-hidden"
             style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
           >
             {formatCellValue(row.getValue(key), key)}
@@ -453,7 +453,7 @@ export const TableView = React.memo(function TableView({
       >
         <Drawer.Portal>
           <Drawer.Overlay className="fixed z-10 inset-0 bg-black/40" />
-          <Drawer.Content className="fixed z-100 right-0 top-0 bottom-0 w-[400px] bg-white p-6 shadow-lg">
+          <Drawer.Content className="fixed z-100 right-0 top-0 bottom-0 w-[500px] bg-white p-6 shadow-lg">
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-baseline gap-2">
@@ -475,7 +475,13 @@ export const TableView = React.memo(function TableView({
                 <JsonView
                   queryPath={queryPath}
                   results={selectedObject?.value}
-                  schema={null}
+                  schema={(() => {
+                    const entityType = queryPath.split("/").reverse()[0];
+                    return entityType && fieldMetadata[entityType]
+                      ? fieldMetadata[entityType]
+                      : null;
+                  })()}
+                  initialKeyField={selectedObject?.field}
                 />
               </div>
             </div>
