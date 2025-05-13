@@ -15,6 +15,10 @@ export interface FieldMetadata {
    * If present, the value is a document of this collection.
    */
   collectionRef?: string;
+  /**
+   * If present, the ref will use this value as a where clause
+   */
+  refField?: string;
 }
 
 /**
