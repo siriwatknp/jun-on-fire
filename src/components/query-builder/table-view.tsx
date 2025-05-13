@@ -96,6 +96,14 @@ const getStorageRefFromUrl = (url: string) => {
   return ref(storage, path);
 };
 
+function isTimestampObject(val: unknown): val is { toDate: () => Date } {
+  return (
+    typeof val === "object" &&
+    val !== null &&
+    typeof (val as { toDate?: unknown }).toDate === "function"
+  );
+}
+
 export const TableView = React.memo(function TableView({
   results,
   queryPath,
@@ -245,18 +253,30 @@ export const TableView = React.memo(function TableView({
       );
     }
 
-    if (key === "id") {
-      const fullId = String(value);
+    // Copy on single click for string, number, or date (timestamp)
+    const isCopyable =
+      typeof value === "string" ||
+      typeof value === "number" ||
+      isTimestampObject(value);
+
+    if (isCopyable) {
+      let displayValue = value;
+      if (isTimestampObject(value)) {
+        displayValue = dayjs(value.toDate()).format("DD MMM BBBB, HH:mm:ss");
+      }
+      const stringValue = String(displayValue);
       return (
         <span
-          className="cursor-pointer hover:text-gray-600"
-          onDoubleClick={() => {
-            navigator.clipboard.writeText(fullId);
-            toast.success("ID copied to clipboard");
+          className="cursor-pointer hover:text-blue-600 transition-colors"
+          onClick={() => {
+            navigator.clipboard.writeText(stringValue);
+            toast.success("Copied to clipboard");
           }}
-          title={`Double click to copy: ${fullId}`}
+          title={stringValue}
         >
-          {fullId.length > 15 ? `${fullId.slice(0, 5)}...` : fullId}
+          {stringValue.length > 20
+            ? `${stringValue.slice(0, 20)}…`
+            : stringValue}
         </span>
       );
     }
