@@ -103,6 +103,10 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // View mode state for QueryResults
+  type ViewMode = "table" | "json";
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+
   // Listen to auth state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -680,6 +684,52 @@ export default function Dashboard() {
     }
   }, [currentQuery, isLoadingMore, hasMore, lastDoc]);
 
+  // Duplicate query logic
+  const duplicateCurrentQuery = useCallback(() => {
+    if (!currentQuery) return;
+    const duplicated = {
+      ...currentQuery,
+      id: crypto.randomUUID(),
+      title: currentQuery.title + " (Copy)",
+      updatedAt: Date.now(),
+    };
+    setCurrentQuery(duplicated);
+    setSavedQueries((prev) => [...prev, duplicated]);
+    setActiveQueryId(duplicated.id);
+    toast.success("Query duplicated");
+  }, [currentQuery]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Only trigger if not focused on input, textarea, or contenteditable
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
+      if (isInput) return;
+
+      if (e.metaKey) {
+        if (e.key === "m" || e.key === "M") {
+          e.preventDefault();
+          e.stopPropagation();
+          createNewQuery();
+        } else if (e.key === "d" || e.key === "D") {
+          e.preventDefault();
+          e.stopPropagation();
+          duplicateCurrentQuery();
+        } else if (e.key === "i" || e.key === "I") {
+          e.preventDefault();
+          e.stopPropagation();
+          setViewMode((prev) => (prev === "table" ? "json" : "table"));
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown, true); // use capture phase
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [createNewQuery, duplicateCurrentQuery]);
+
   return (
     <QueryActionProvider
       value={{
@@ -1008,6 +1058,8 @@ export default function Dashboard() {
                       currentQuery={currentQuery}
                       hasMore={hasMore}
                       isLoadingMore={isLoadingMore}
+                      viewMode={viewMode}
+                      onViewModeChange={setViewMode}
                     />
                   </div>
                 </div>

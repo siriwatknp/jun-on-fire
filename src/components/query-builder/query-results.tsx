@@ -9,6 +9,8 @@ import { JsonView } from "./json-view";
 import { TableView } from "./table-view";
 import { fieldMetadata } from "@/schema";
 
+type ViewMode = "table" | "json";
+
 interface QueryResultsProps {
   isLoading: boolean;
   error: string | null;
@@ -16,9 +18,9 @@ interface QueryResultsProps {
   currentQuery: QueryState;
   hasMore: boolean;
   isLoadingMore: boolean;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
 }
-
-type ViewMode = "table" | "json";
 
 export function QueryResults({
   isLoading,
@@ -27,8 +29,12 @@ export function QueryResults({
   currentQuery,
   hasMore,
   isLoadingMore,
+  viewMode: controlledViewMode,
+  onViewModeChange,
 }: QueryResultsProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>("table");
+  const viewMode = controlledViewMode ?? internalViewMode;
+  const setViewMode = onViewModeChange ?? setInternalViewMode;
 
   // Calculate the size of the results
   const resultSize = useMemo(() => {
