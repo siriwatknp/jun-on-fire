@@ -42,6 +42,8 @@ const firebaseConfig =
         appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
       };
 
+const projectId = firebaseConfig.projectId;
+
 // Initialize Firebase
 const app =
   getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -140,4 +142,5 @@ export {
   getUserData,
   updateUserData,
   authenticateLineUser,
+  projectId,
 };

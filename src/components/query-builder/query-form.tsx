@@ -1,8 +1,16 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { PlusCircle, Trash2, Play, RotateCcw, Plus } from "lucide-react";
+import {
+  PlusCircle,
+  Trash2,
+  Play,
+  RotateCcw,
+  Plus,
+  ExternalLink,
+} from "lucide-react";
 import { fieldMetadata } from "@/schema";
+import { projectId } from "@/lib/firebase";
 import { useQueryAction } from "./query-action-context";
 
 import { Button } from "@/components/ui/button";
@@ -1037,7 +1045,7 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
         </div>
 
         {/* Execute Query Button */}
-        <div className="pt-4">
+        <div className="pt-4 flex items-center gap-2">
           <Button
             size="sm"
             variant="default"
@@ -1052,6 +1060,47 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
             )}
             Execute Query
           </Button>
+
+          {/* Firebase Console Link Button */}
+          {(() => {
+            const collectionPath = query.source.path;
+            let urlPath = collectionPath;
+            // Check for __name__ where clause
+            const nameClause = query.constraints.where.clauses.find(
+              (clause) =>
+                clause.field === "__name__" &&
+                clause.operator === "==" &&
+                clause.value &&
+                clause.valueType === "string"
+            );
+            if (nameClause) {
+              urlPath = `${collectionPath}/${nameClause.value}`;
+            }
+            // Encode for Firebase Console
+            const encodedPath = urlPath
+              .split("/")
+              .map((segment) => `~2F${segment}`)
+              .join("");
+            const firebaseUrl = `https://console.firebase.google.com/u/0/project/${projectId}/firestore/databases/-default-/data/${encodedPath}`;
+            return (
+              <Button
+                variant="outline"
+                asChild
+                className="ml-2"
+                title="Open in Firebase Console"
+              >
+                <a
+                  href={firebaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-2"
+                >
+                  Open console
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            );
+          })()}
 
           <AlertDialog
             open={showNoLimitDialog}
