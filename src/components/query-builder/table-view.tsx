@@ -236,6 +236,11 @@ export const TableView = React.memo(function TableView({
           collectionRef={fieldMeta.collectionRef}
           queryPath={queryPath}
           value={String(value)}
+          refField={
+            typeof fieldMeta.refField === "string"
+              ? fieldMeta.refField
+              : undefined
+          }
         />
       );
     }

@@ -61,7 +61,11 @@ export const JsonView = React.memo(function JsonView({
       }
 
       if (result && typeof result === "object" && "collectionRef" in result) {
-        return result.collectionRef;
+        return {
+          collectionRef: result.collectionRef,
+          refField:
+            typeof result.refField === "string" ? result.refField : undefined,
+        };
       }
 
       return null;
@@ -96,7 +100,11 @@ export const JsonView = React.memo(function JsonView({
       }
 
       if (result && typeof result === "object" && "collectionRef" in result) {
-        return result.collectionRef;
+        return {
+          collectionRef: result.collectionRef,
+          refField:
+            typeof result.refField === "string" ? result.refField : undefined,
+        };
       }
 
       return null;
@@ -106,20 +114,27 @@ export const JsonView = React.memo(function JsonView({
 
   const defaultItemString: GetItemString = React.useCallback(
     (type, data, itemType, itemString, keyPath) => {
-      const collectionRef = getKeyCollectionRef(keyPath as string[]);
-      if (keyPath.includes("filledPOMap")) {
-        console.log("keyPath", keyPath);
-      }
+      const collectionRefObj =
+        getKeyCollectionRef(keyPath as string[]) || undefined;
+      const collectionRefString =
+        typeof collectionRefObj === "object"
+          ? collectionRefObj.collectionRef
+          : collectionRefObj;
       return (
         <span className="inline-flex group">
           {itemType} {itemString}
-          {collectionRef && (
+          {typeof collectionRefString === "string" && (
             <CollectionRefTooltip
               className="ml-1"
-              collectionRef={collectionRef}
+              collectionRef={collectionRefString}
               queryPath={queryPath}
               value={String(keyPath[0])}
               hideText
+              {...(collectionRefObj &&
+              typeof collectionRefObj === "object" &&
+              typeof collectionRefObj.refField === "string"
+                ? { refField: collectionRefObj.refField }
+                : {})}
             />
           )}
           <ClipboardButton
@@ -153,7 +168,12 @@ export const JsonView = React.memo(function JsonView({
           return value;
         }}
         valueRenderer={(valueAsString, value, ...keyPath) => {
-          const collectionRef = getValueCollectionRef(keyPath as string[]);
+          const collectionRefObj =
+            getValueCollectionRef(keyPath as string[]) || undefined;
+          const collectionRefString =
+            typeof collectionRefObj === "object"
+              ? collectionRefObj.collectionRef
+              : collectionRefObj;
 
           if (typeof value === "string" && value.startsWith("https://")) {
             return (
@@ -175,13 +195,18 @@ export const JsonView = React.memo(function JsonView({
           return (
             <span className="inline-flex group ml-[0.5ch]">
               {valueAsString as string}{" "}
-              {collectionRef && (
+              {typeof collectionRefString === "string" && (
                 <CollectionRefTooltip
                   className="ml-1"
-                  collectionRef={collectionRef}
+                  collectionRef={collectionRefString}
                   queryPath={queryPath}
                   value={String(value)}
                   hideText
+                  {...(collectionRefObj &&
+                  typeof collectionRefObj === "object" &&
+                  typeof collectionRefObj.refField === "string"
+                    ? { refField: collectionRefObj.refField }
+                    : {})}
                 />
               )}
               <ClipboardButton

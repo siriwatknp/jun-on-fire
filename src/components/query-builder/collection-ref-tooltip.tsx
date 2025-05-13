@@ -23,6 +23,7 @@ interface CollectionRefTooltipProps {
   collectionRef: string;
   value: string;
   hideText?: boolean;
+  refField?: string | undefined;
 }
 
 export function CollectionRefTooltip({
@@ -31,6 +32,7 @@ export function CollectionRefTooltip({
   collectionRef,
   value,
   hideText = false,
+  refField,
 }: CollectionRefTooltipProps) {
   const { onSaveQuery, onCreateQuery, onExecuteQuery } = useQueryAction();
   const querySegments = queryPath.split("/");
@@ -42,6 +44,13 @@ export function CollectionRefTooltip({
   const handleCollectionRefClick = async () => {
     try {
       await onSaveQuery();
+      const whereField = refField ?? "__name__";
+      let whereValueType: ValueType = "string";
+      let parsedValue: string = value;
+      if (!isNaN(Number(value)) && value.trim() !== "") {
+        whereValueType = "number";
+        parsedValue = String(Number(value));
+      }
       const newQuery = {
         ...createDefaultQuery(),
         id: crypto.randomUUID(),
@@ -55,10 +64,10 @@ export function CollectionRefTooltip({
             enabled: true,
             clauses: [
               {
-                field: "__name__",
+                field: whereField,
                 operator: "==" as WhereOperator,
-                value: value,
-                valueType: "string" as ValueType,
+                value: parsedValue,
+                valueType: whereValueType,
               },
             ],
           },
