@@ -1,7 +1,11 @@
 import * as dotenv from "dotenv";
+
+dotenv.config();
+
 import * as fs from "fs";
 import * as path from "path";
-import { db } from "../src/lib/firebase";
+import { auth, db } from "../src/lib/firebase";
+import { connectAuthEmulator } from "firebase/auth";
 import {
   collection,
   doc,
@@ -10,8 +14,9 @@ import {
   connectFirestoreEmulator,
 } from "firebase/firestore";
 
-dotenv.config();
-
+connectAuthEmulator(auth, "http://localhost:9099", {
+  disableWarnings: true,
+});
 connectFirestoreEmulator(db, "localhost", 8080);
 
 // Simple random data helpers
@@ -80,6 +85,37 @@ posts.forEach((post) => {
       createdAt: new Date(),
     });
   }
+});
+
+// Generate activities for each user
+const activitiesByUser: Record<
+  string,
+  Array<{
+    type: string;
+    timestamp: Date;
+    description: string;
+    postTitle?: string;
+  }>
+> = {};
+users.forEach((user) => {
+  const activityCount = randomInt(2, 3);
+  const userActivities = [];
+  for (let i = 0; i < activityCount; i++) {
+    const hasPost = Math.random() < 0.7; // 70% chance to reference a post
+    let postTitle: string | undefined = undefined;
+    if (hasPost) {
+      postTitle = randomItem(posts).title;
+    }
+    userActivities.push({
+      type: hasPost ? "create_post" : "update_profile",
+      timestamp: new Date(),
+      description: hasPost
+        ? `Created post ${postTitle}`
+        : "Updated profile information.",
+      ...(hasPost ? { postTitle } : {}),
+    });
+  }
+  activitiesByUser[user.email] = userActivities;
 });
 
 // --- Write schemaContent to shared/schema-base.ts ---
@@ -160,6 +196,11 @@ async function main() {
   // Add users
   for (const user of users) {
     await setDoc(doc(db, "users", user.email), user);
+    // Add activities subcollection
+    const acts = activitiesByUser[user.email] || [];
+    for (const act of acts) {
+      await addDoc(collection(db, "users", user.email, "activities"), act);
+    }
   }
 
   // Add groups
