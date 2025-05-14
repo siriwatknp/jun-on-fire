@@ -134,7 +134,9 @@ export function CollectionRefTooltip({
         </TooltipTrigger>
         <TooltipContent className="max-w-[300px] space-y-1 px-2">
           <p className="font-medium">{parsedCollectionRef}</p>
-          <p className="text-xs text-gray-300">ID: {value}</p>
+          <p className="text-xs text-gray-300">
+            {refField || "ID"}: {value}
+          </p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
