@@ -1,9 +1,6 @@
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 import * as path from "path";
-
-dotenv.config();
-
 import { db } from "../src/lib/firebase";
 import {
   collection,
@@ -13,106 +10,79 @@ import {
   connectFirestoreEmulator,
 } from "firebase/firestore";
 
+dotenv.config();
+
 connectFirestoreEmulator(db, "localhost", 8080);
 
-// Mock data
-const users = [
-  {
-    id: "user1",
-    name: "Alice",
-    avatar: "https://i.pravatar.cc/150?img=1",
-    socials: {
-      twitter: "https://twitter.com/alice",
-      github: "https://github.com/alice",
-    },
-    favoritePosts: ["post2", "post3"],
-  },
-  {
-    id: "user2",
-    name: "Bob",
-    avatar: "https://i.pravatar.cc/150?img=2",
-    socials: {
-      twitter: "https://twitter.com/bob",
-      github: "https://github.com/bob",
-    },
-    favoritePosts: ["post1"],
-  },
-  {
-    id: "user3",
-    name: "Charlie",
-    avatar: "https://i.pravatar.cc/150?img=3",
-    socials: {
-      twitter: "https://twitter.com/charlie",
-      github: "https://github.com/charlie",
-    },
-    favoritePosts: ["post4", "post5"],
-  },
-];
+// Simple random data helpers
+function randomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function randomItem<T>(arr: T[]): T {
+  return arr[randomInt(0, arr.length - 1)];
+}
+function randomItems<T>(arr: T[], count: number): T[] {
+  const set = new Set<T>();
+  while (set.size < count) set.add(randomItem(arr));
+  return Array.from(set);
+}
 
-const posts = [
-  {
-    id: "post1",
-    title: "First Post",
-    content: "This is the first post.",
-    author: "user1",
-    createdAt: new Date(),
-  },
-  {
-    id: "post2",
-    title: "Second Post",
-    content: "This is the second post.",
-    author: "user2",
-    createdAt: new Date(),
-  },
-  {
-    id: "post3",
-    title: "Third Post",
-    content: "This is the third post.",
-    author: "user3",
-    createdAt: new Date(),
-  },
-  {
-    id: "post4",
-    title: "Fourth Post",
-    content: "This is the fourth post.",
-    author: "user1",
-    createdAt: new Date(),
-  },
-  {
-    id: "post5",
-    title: "Fifth Post",
-    content: "This is the fifth post.",
-    author: "user2",
-    createdAt: new Date(),
-  },
-];
+// Generate tags
+const tags = Array.from({ length: 20 }, (_, i) => ({
+  name: `Tag ${i + 1}`,
+  description: `Description for tag ${i + 1}`,
+}));
 
-type Activity = {
-  type: string;
-  timestamp: Date;
-  description: string;
-  postId?: string;
-};
+// Generate users
+const users = Array.from({ length: 100 }, (_, i) => {
+  const name = `User${i + 1}`;
+  const email = `user${i + 1}@example.com`;
+  const avatar = `https://i.pravatar.cc/150?img=${(i % 70) + 1}`;
+  const favoriteTag = randomItem(tags).name;
+  return { name, email, avatar, favoriteTag };
+});
 
-const activities = [
-  (userId: string, postId?: string) =>
-    [
-      {
-        type: "update_profile",
-        timestamp: new Date(),
-        description: "Updated profile information.",
-      },
-      postId
-        ? {
-            type: "create_post",
-            timestamp: new Date(),
-            postId,
-            description: `Created post ${postId}`,
-          }
-        : null,
-    ].filter(Boolean),
-];
+// Generate groups
+const groups = Array.from({ length: 10 }, (_, i) => {
+  const name = `Group ${i + 1}`;
+  const ownerEmail = randomItem(users).email;
+  return { name, ownerEmail };
+});
 
+// Generate posts
+const posts = Array.from({ length: 300 }, (_, i) => {
+  const title = `Post Title ${i + 1}`;
+  const content = `This is the content of post ${i + 1}.`;
+  const author = randomItem(users).name;
+  const tagCount = randomInt(1, 5);
+  const tagNames = randomItems(
+    tags.map((t) => t.name),
+    tagCount
+  );
+  const createdAt = new Date();
+  return { title, content, author, tagNames, createdAt };
+});
+
+// Generate comments
+const comments: Array<{
+  postTitle: string;
+  authorEmail: string;
+  content: string;
+  createdAt: Date;
+}> = [];
+posts.forEach((post) => {
+  const commentCount = randomInt(0, 20);
+  for (let i = 0; i < commentCount; i++) {
+    comments.push({
+      postTitle: post.title,
+      authorEmail: randomItem(users).email,
+      content: `Comment ${i + 1} on ${post.title}`,
+      createdAt: new Date(),
+    });
+  }
+});
+
+// --- Write schemaContent to shared/schema-base.ts ---
 const schemaContent = `/**
  * Field metadata including display info and formatting functions
  */
@@ -130,6 +100,10 @@ export interface FieldMetadata {
    * If present, the value is a document of this collection.
    */
   collectionRef?: string;
+  /**
+   * If present, the ref will use this value as a where clause
+   */
+  refField?: string;
 }
 
 /**
@@ -138,53 +112,37 @@ export interface FieldMetadata {
 export const fieldMetadata: Record<string, Record<string, FieldMetadata>> = {
   users: {
     name: { type: "string" },
+    email: { type: "string" },
     avatar: { type: "string" },
-    socials: { type: "map" },
-    favoritePosts: { type: "array", collectionRef: "posts" },
+    favoriteTag: { type: "string", collectionRef: "tags", refField: "name" },
   },
   posts: {
     title: { type: "string" },
     content: { type: "string" },
-    author: { type: "string", collectionRef: "users" },
+    author: { type: "string", collectionRef: "users", refField: "name" },
+    tagNames: { type: "array", collectionRef: "tags", refField: "name" },
     createdAt: { type: "timestamp" },
   },
-  activities: {
-    type: { type: "string" },
-    timestamp: { type: "timestamp" },
+  comments: {
+    postTitle: { type: "string", collectionRef: "posts", refField: "title" },
+    authorEmail: { type: "string", collectionRef: "users", refField: "email" },
+    content: { type: "string" },
+    createdAt: { type: "timestamp" },
+  },
+  groups: {
+    name: { type: "string" },
+    ownerEmail: { type: "string", collectionRef: "users", refField: "email" },
+  },
+  tags: {
+    name: { type: "string" },
     description: { type: "string" },
-    postId: { type: "string", isNullable: true, collectionRef: "posts" },
   },
 };
 
 /**
  * Type mapping from entity names to their schema definitions
  */
-export interface UsersSchema {
-  name: string;
-  avatar: string;
-  socials: Record<string, string>;
-  favoritePosts: string[];
-}
-
-export interface PostsSchema {
-  title: string;
-  content: string;
-  author: string;
-  createdAt: Date;
-}
-
-export interface ActivitiesSchema {
-  type: string;
-  timestamp: Date;
-  description: string;
-  postId?: string;
-}
-
-export interface SchemaDefinition {
-  users: UsersSchema;
-  posts: PostsSchema;
-  activities: ActivitiesSchema;
-}
+export type BaseSchemaDefinition = Record<string, unknown>;
 `;
 
 fs.writeFileSync(
@@ -194,41 +152,29 @@ fs.writeFileSync(
 );
 
 async function main() {
+  // Add tags
+  for (const tag of tags) {
+    await setDoc(doc(db, "tags", tag.name), tag);
+  }
+
   // Add users
   for (const user of users) {
-    await setDoc(doc(db, "users", user.id), {
-      name: user.name,
-      avatar: user.avatar,
-      socials: user.socials,
-      favoritePosts: user.favoritePosts,
-    });
+    await setDoc(doc(db, "users", user.email), user);
+  }
+
+  // Add groups
+  for (const group of groups) {
+    await setDoc(doc(db, "groups", group.name), group);
   }
 
   // Add posts
   for (const post of posts) {
-    await setDoc(doc(db, "posts", post.id), {
-      title: post.title,
-      content: post.content,
-      author: post.author,
-      createdAt: post.createdAt,
-    });
+    await addDoc(collection(db, "posts"), post);
   }
 
-  // Add activities for each user
-  for (const user of users) {
-    // Find posts by this user
-    const userPosts = posts.filter((p) => p.author === user.id);
-    // Add 2-3 activities per user
-    const acts = [
-      ...activities[0](user.id, userPosts[0]?.id),
-      ...activities[0](user.id, userPosts[1]?.id),
-    ].filter(Boolean) as Activity[];
-    for (const act of acts) {
-      await addDoc(collection(db, "users", user.id, "activities"), {
-        ...act,
-        timestamp: act.timestamp || new Date(),
-      });
-    }
+  // Add comments
+  for (const comment of comments) {
+    await addDoc(collection(db, "comments"), comment);
   }
 
   console.log("Mock data populated to Firestore emulator.");

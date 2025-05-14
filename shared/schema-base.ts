@@ -24,27 +24,9 @@ export interface FieldMetadata {
 /**
  * Metadata for all fields in the schemas
  */
-export const fieldMetadata: Record<string, Record<string, FieldMetadata>> = {
-  // post: {
-  //   author: {
-  //     type: "string",
-  //     collectionRef: "users",
-  //   },
-  //   title: {
-  //     type: "string",
-  //     isNullable: true,
-  //   },
-  //   number: {
-  //     type: "number",
-  //   },
-  //   createdAt: {
-  //     type: "timestamp",
-  //   },
-  // },
-};
+export const fieldMetadata: Record<string, Record<string, FieldMetadata>> = {};
 
 /**
  * Type mapping from entity names to their schema definitions
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface SchemaDefinition {}
+export type BaseSchemaDefinition = Record<string, unknown>;
