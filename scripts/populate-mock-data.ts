@@ -189,34 +189,33 @@ fs.writeFileSync(
 
 async function main() {
   // Add tags
-  for (const tag of tags) {
-    await setDoc(doc(db, "tags", tag.name), tag);
-  }
+  await Promise.all(tags.map((tag) => setDoc(doc(db, "tags", tag.name), tag)));
 
   // Add users
-  for (const user of users) {
-    await setDoc(doc(db, "users", user.email), user);
-    // Add activities subcollection
-    const acts = activitiesByUser[user.email] || [];
-    for (const act of acts) {
-      await addDoc(collection(db, "users", user.email, "activities"), act);
-    }
-  }
+  await Promise.all(
+    users.map(async (user) => {
+      await setDoc(doc(db, "users", user.email), user);
+      const acts = activitiesByUser[user.email] || [];
+      await Promise.all(
+        acts.map((act) =>
+          addDoc(collection(db, "users", user.email, "activities"), act)
+        )
+      );
+    })
+  );
 
   // Add groups
-  for (const group of groups) {
-    await setDoc(doc(db, "groups", group.name), group);
-  }
+  await Promise.all(
+    groups.map((group) => setDoc(doc(db, "groups", group.name), group))
+  );
 
   // Add posts
-  for (const post of posts) {
-    await addDoc(collection(db, "posts"), post);
-  }
+  await Promise.all(posts.map((post) => addDoc(collection(db, "posts"), post)));
 
   // Add comments
-  for (const comment of comments) {
-    await addDoc(collection(db, "comments"), comment);
-  }
+  await Promise.all(
+    comments.map((comment) => addDoc(collection(db, "comments"), comment))
+  );
 
   console.log("Mock data populated to Firestore emulator.");
   process.exit(0);
