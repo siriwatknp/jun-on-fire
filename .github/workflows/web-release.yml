@@ -61,3 +61,4 @@ jobs:
           projectId: "${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
           channelId: live
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          target: "${{ secrets.FIREBASE_SITE_TARGET || secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
