@@ -179,6 +179,36 @@ export const fieldMetadata: Record<string, Record<string, FieldMetadata>> = {
  * Type mapping from entity names to their schema definitions
  */
 export type BaseSchemaDefinition = Record<string, unknown>;
+
+export interface SchemaDefinition {
+  users: {
+    name: string;
+    email: string;
+    avatar: string;
+    favoriteTag: string;
+  },
+  posts: {
+    title: string;
+    content: string;
+    author: string;
+    tagNames: Array<string>;
+    createdAt: Date;
+  },
+  comments: {
+    postTitle: string;
+    authorEmail: string;
+    content: string;
+    createdAt: Date;
+  },
+  groups: {
+    name: string;
+    ownerEmail: string;
+  },
+  tags: {
+    name: string;
+    description: string;
+  }
+}
 `;
 
 fs.writeFileSync(
@@ -190,6 +220,7 @@ fs.writeFileSync(
 async function main() {
   // Add tags
   await Promise.all(tags.map((tag) => setDoc(doc(db, "tags", tag.name), tag)));
+  console.log("✓ Tags added successfully");
 
   // Add users
   await Promise.all(
@@ -203,19 +234,23 @@ async function main() {
       );
     })
   );
+  console.log("✓ Users added successfully");
 
   // Add groups
   await Promise.all(
     groups.map((group) => setDoc(doc(db, "groups", group.name), group))
   );
+  console.log("✓ Groups added successfully");
 
   // Add posts
   await Promise.all(posts.map((post) => addDoc(collection(db, "posts"), post)));
+  console.log("✓ Posts added successfully");
 
   // Add comments
   await Promise.all(
     comments.map((comment) => addDoc(collection(db, "comments"), comment))
   );
+  console.log("✓ Comments added successfully");
 
   console.log("Mock data populated to Firestore emulator.");
   process.exit(0);
