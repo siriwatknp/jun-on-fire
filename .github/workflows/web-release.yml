@@ -55,10 +55,13 @@ jobs:
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_LINE_LIFF_ID: ${{ secrets.NEXT_PUBLIC_LINE_LIFF_ID }}
 
+      - name: Update firebase.json hosting site
+        run: |
+          jq '.hosting += {"site": "${{ secrets.FIREBASE_SITE_TARGET || secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"}' firebase.json > temp.json && mv temp.json firebase.json
+
       - uses: FirebaseExtended/action-hosting-deploy@v0.9.0
         with:
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
           projectId: "${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
           channelId: live
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          target: "${{ secrets.FIREBASE_SITE_TARGET || secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
