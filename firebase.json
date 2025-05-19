@@ -20,7 +20,6 @@
     }
   },
   "hosting": {
-    "site": "scrapee-dev",
     "public": "out",
     "cleanUrls": true
   }
