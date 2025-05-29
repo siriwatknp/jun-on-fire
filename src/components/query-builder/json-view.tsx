@@ -4,6 +4,11 @@ import { ClipboardButton } from "@/components/ui/clipboard-button";
 import { CollectionRefTooltip } from "./collection-ref-tooltip";
 import { FieldMetadata } from "@/schema";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const jsonViewTheme = {
   scheme: "custom",
@@ -31,6 +36,30 @@ interface JsonViewProps {
   results: unknown;
   queryPath: string;
   initialKeyField?: string;
+}
+
+// Recursively replace all fields with a toDate method with their toDate() value
+function replaceToDateFields(data: unknown): unknown {
+  if (Array.isArray(data)) {
+    return data.map(replaceToDateFields);
+  }
+  if (data && typeof data === "object" && !(data instanceof Date)) {
+    if (typeof (data as { toDate?: unknown }).toDate === "function") {
+      const date = (data as { toDate: () => Date }).toDate();
+      // Format as ISO string with +07:00 offset
+      return dayjs(date).tz("Asia/Bangkok").format("YYYY-MM-DDTHH:mm:ssZ");
+    }
+    const result: Record<string, unknown> = {};
+    for (const key in data as Record<string, unknown>) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        result[key] = replaceToDateFields(
+          (data as Record<string, unknown>)[key]
+        );
+      }
+    }
+    return result;
+  }
+  return data;
 }
 
 export const JsonView = React.memo(function JsonView({
@@ -146,7 +175,7 @@ export const JsonView = React.memo(function JsonView({
             />
           )}
           <ClipboardButton
-            value={data}
+            value={replaceToDateFields(data)}
             className="ml-1 invisible group-hover:visible"
           />
         </span>
@@ -218,7 +247,7 @@ export const JsonView = React.memo(function JsonView({
                 />
               )}
               <ClipboardButton
-                value={value}
+                value={replaceToDateFields(value)}
                 className="ml-1 invisible group-hover:visible"
               />
             </span>
