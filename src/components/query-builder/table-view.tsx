@@ -12,6 +12,7 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
+  Column,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -38,6 +39,13 @@ import { CollectionRefTooltip } from "./collection-ref-tooltip";
 import { JsonView } from "./json-view";
 import { dayjs } from "@/lib/dateTime";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  createDefaultQuery,
+  QueryType,
+  ValueType,
+  OrderDirection,
+  WhereOperator,
+} from "./types";
 
 interface TableViewProps {
   results: DocumentData[];
@@ -134,7 +142,8 @@ export const TableView = React.memo(function TableView({
     } | null;
   } | null>(null);
 
-  const { onFetchNextPage } = useQueryAction();
+  const { onFetchNextPage, onCreateQuery, onExecuteQuery, onSaveQuery } =
+    useQueryAction();
 
   const handleImageClick = async (url: string) => {
     try {
@@ -283,6 +292,55 @@ export const TableView = React.memo(function TableView({
     return String(value);
   };
 
+  // Handler for double-clicking id cell
+  const handleIdDoubleClick = async (idValue: string) => {
+    if (!idValue) return;
+    await onSaveQuery();
+    const segments = queryPath.split("/");
+    const collectionPath =
+      segments.length % 2 === 0 ? segments.slice(0, -1).join("/") : queryPath;
+    const newQuery = {
+      ...createDefaultQuery(),
+      id: crypto.randomUUID(),
+      title: `Query ${collectionPath} (__name__ == ${idValue})`,
+      source: {
+        type: "collection" as QueryType,
+        path: collectionPath,
+      },
+      constraints: {
+        where: {
+          enabled: true,
+          clauses: [
+            {
+              field: "__name__",
+              operator: "==" as WhereOperator,
+              value: idValue,
+              valueType: "string" as ValueType,
+            },
+          ],
+        },
+        orderBy: {
+          enabled: false,
+          field: "",
+          direction: "asc" as OrderDirection,
+        },
+        limit: {
+          enabled: false,
+          value: null,
+        },
+      },
+      aggregation: {
+        count: { enabled: false },
+        sum: { enabled: false, fields: [] },
+        average: { enabled: false, fields: [] },
+      },
+      updatedAt: Date.now(),
+    };
+    onCreateQuery(newQuery);
+    onExecuteQuery(newQuery);
+    toast.success(`Created and executed query for id: ${idValue}`);
+  };
+
   const columns = React.useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     if (!results || results.length === 0) return [];
 
@@ -309,9 +367,40 @@ export const TableView = React.memo(function TableView({
     return sortedKeys.map((key) => {
       const headerText = key;
       const widthCh = headerText.length;
+      // Only add double-click for id column
+      if (key === "id") {
+        return {
+          accessorKey: key,
+          header: ({ column }: { column: Column<Record<string, unknown>> }) => (
+            <TableHead
+              className="inline-block"
+              style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
+            >
+              <DataTableColumnHeader column={column} title={key} />
+            </TableHead>
+          ),
+          cell: ({
+            row,
+          }: {
+            row: import("@tanstack/react-table").Row<Record<string, unknown>>;
+          }) => (
+            <TableCell
+              className="inline-block whitespace-nowrap overflow-ellipsis overflow-hidden cursor-pointer hover:bg-blue-50"
+              style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
+              onDoubleClick={async () => {
+                await handleIdDoubleClick(String(row.getValue(key)));
+              }}
+              title="Double click to query by id"
+            >
+              {formatCellValue(row.getValue(key), key)}
+            </TableCell>
+          ),
+        };
+      }
+      // Default for other columns
       return {
         accessorKey: key,
-        header: ({ column }) => (
+        header: ({ column }: { column: Column<Record<string, unknown>> }) => (
           <TableHead
             className="inline-block"
             style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
@@ -319,7 +408,11 @@ export const TableView = React.memo(function TableView({
             <DataTableColumnHeader column={column} title={key} />
           </TableHead>
         ),
-        cell: ({ row }) => (
+        cell: ({
+          row,
+        }: {
+          row: import("@tanstack/react-table").Row<Record<string, unknown>>;
+        }) => (
           <TableCell
             className="inline-block whitespace-nowrap overflow-ellipsis overflow-hidden"
             style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
