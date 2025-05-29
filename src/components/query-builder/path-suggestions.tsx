@@ -18,6 +18,7 @@ export interface PathSuggestionsProps {
   queryType: "collection" | "collectionGroup";
   className?: string;
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+  blurUpdate?: (event: React.FocusEvent<HTMLInputElement>) => boolean;
 }
 
 export function PathSuggestions({
@@ -26,6 +27,7 @@ export function PathSuggestions({
   queryType,
   className,
   inputProps,
+  blurUpdate,
 }: PathSuggestionsProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
@@ -153,6 +155,12 @@ export function PathSuggestions({
           }
           if (e.key === "Tab" || e.key === "Escape") {
             setOpen(false);
+            handleSaveValue();
+          }
+        }}
+        onBlur={(event) => {
+          const isUpdated = blurUpdate?.(event);
+          if (!isUpdated) {
             handleSaveValue();
           }
         }}

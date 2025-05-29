@@ -39,7 +39,6 @@ export const JsonView = React.memo(function JsonView({
   schema,
   initialKeyField,
 }: JsonViewProps) {
-  console.log("results", results);
   const getKeyCollectionRef = React.useCallback(
     (path: (string | number)[]) => {
       if (!queryPath || !schema || path.length === 0) return null;

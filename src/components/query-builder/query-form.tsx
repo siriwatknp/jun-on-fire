@@ -566,8 +566,8 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
   // --- Add this handler for path blur ---
   const handlePathBlur = (rawPath: string) => {
     // Only apply for collection type (not collectionGroup)
-    if (query.source.type !== "collection") return;
-    if (!rawPath) return;
+    if (query.source.type !== "collection") return false;
+    if (!rawPath) return false;
     const segments = rawPath.split("/").filter(Boolean);
     // If odd number of segments, it's a document path
     if (segments.length % 2 === 0 && segments.length > 1) {
@@ -602,7 +602,9 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
           },
         };
       });
+      return true;
     }
+    return false;
   };
 
   return (
@@ -652,9 +654,9 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
                 }
                 queryType={query.source.type}
                 className="max-w-md"
-                inputProps={{
-                  id: "path",
-                  onBlur: (e) => handlePathBlur(e.target.value),
+                inputProps={{ id: "path" }}
+                blurUpdate={(event) => {
+                  return handlePathBlur(event.target.value);
                 }}
               />
               {query.source.path &&
