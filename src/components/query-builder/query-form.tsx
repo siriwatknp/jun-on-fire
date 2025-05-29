@@ -563,6 +563,48 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
     }
   };
 
+  // --- Add this handler for path blur ---
+  const handlePathBlur = (rawPath: string) => {
+    // Only apply for collection type (not collectionGroup)
+    if (query.source.type !== "collection") return;
+    if (!rawPath) return;
+    const segments = rawPath.split("/").filter(Boolean);
+    // If odd number of segments, it's a document path
+    if (segments.length % 2 === 0 && segments.length > 1) {
+      const docId = segments[segments.length - 1];
+      const collectionPath = segments.slice(0, -1).join("/");
+      updateQuery((q) => {
+        // Remove any existing __name__ clause
+        let clauses = q.constraints.where.clauses.filter(
+          (clause) =>
+            clause.field !== "__name__" && (clause.field || clause.value)
+        );
+        // Add the __name__ clause
+        clauses = [
+          ...clauses,
+          {
+            field: "__name__",
+            operator: "==",
+            value: docId,
+            valueType: "string",
+          },
+        ];
+        return {
+          ...q,
+          source: { ...q.source, path: collectionPath },
+          constraints: {
+            ...q.constraints,
+            where: {
+              ...q.constraints.where,
+              enabled: true,
+              clauses,
+            },
+          },
+        };
+      });
+    }
+  };
+
   return (
     <div className="bg-white pl-2 rounded-lg h-full overflow-y-auto">
       <div className="space-y-6">
@@ -610,7 +652,10 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
                 }
                 queryType={query.source.type}
                 className="max-w-md"
-                inputProps={{ id: "path" }}
+                inputProps={{
+                  id: "path",
+                  onBlur: (e) => handlePathBlur(e.target.value),
+                }}
               />
               {query.source.path &&
               getEntityTypeFromPath(query.source.path, query.source.type) ? (
