@@ -80,25 +80,20 @@ export function FieldSuggestions({
     };
   }, [open]);
 
-  // Close the dropdown when clicking outside
+  // Improved: close dropdown on outside mousedown
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleMouseDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      const isInputClick = inputRef.current?.contains(target);
-      const isPopupClick = popupRef.current?.contains(target);
-      const isCommandClick = document
-        .querySelector("[cmdk-root]")
-        ?.contains(target);
-
-      // Keep open if clicking on input, popup, or command elements
-      if (!isInputClick && !isPopupClick && !isCommandClick) {
+      if (
+        !inputRef.current?.contains(target) &&
+        !popupRef.current?.contains(target)
+      ) {
         setOpen(false);
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleMouseDown);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("mousedown", handleMouseDown);
     };
   }, []);
 
@@ -123,6 +118,14 @@ export function FieldSuggestions({
         }}
         onClick={() => entityType && setOpen(true)}
         onFocus={() => entityType && setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            setOpen(false);
+          }
+          if (e.key === "Tab" || e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
         placeholder={
           entityType ? placeholder : `${placeholder} (define path first)`
         }
