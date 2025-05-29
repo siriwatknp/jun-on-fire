@@ -229,25 +229,38 @@ export const JsonView = React.memo(function JsonView({
             );
           }
 
+          // Combine the special 'id' field logic with the main return
+          const isIdField =
+            keyPath && keyPath.length === 3 && keyPath[0] === "id";
           return (
             <span className="inline-flex group ml-[0.5ch]">
               {valueAsString as string}{" "}
-              {typeof collectionRefString === "string" && (
+              {isIdField ? (
                 <CollectionRefTooltip
                   className="ml-1"
-                  collectionRef={collectionRefString}
+                  collectionRef={queryPath}
                   queryPath={queryPath}
                   value={String(value)}
                   hideText
-                  {...(collectionRefObj &&
-                  typeof collectionRefObj === "object" &&
-                  typeof collectionRefObj.refField === "string"
-                    ? { refField: collectionRefObj.refField }
-                    : {})}
                 />
+              ) : (
+                typeof collectionRefString === "string" && (
+                  <CollectionRefTooltip
+                    className="ml-1"
+                    collectionRef={collectionRefString}
+                    queryPath={queryPath}
+                    value={String(value)}
+                    hideText
+                    {...(collectionRefObj &&
+                    typeof collectionRefObj === "object" &&
+                    typeof collectionRefObj.refField === "string"
+                      ? { refField: collectionRefObj.refField }
+                      : {})}
+                  />
+                )
               )}
               <ClipboardButton
-                value={replaceToDateFields(value)}
+                value={value}
                 className="ml-1 invisible group-hover:visible"
               />
             </span>
