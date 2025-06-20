@@ -25,16 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 import {
   QueryState,
@@ -55,7 +45,6 @@ interface QueryFormProps {
 
 export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
   const { onExecuteQuery } = useQueryAction();
-  const [showNoLimitDialog, setShowNoLimitDialog] = React.useState(false);
 
   // Helper function to extract entity type from path
   const getEntityTypeFromPath = (
@@ -555,15 +544,7 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
     }));
   };
 
-  const handleExecuteClick = (forceRefresh = false) => {
-    if (!query.constraints.limit.enabled && !forceRefresh) {
-      setShowNoLimitDialog(true);
-    } else {
-      onExecuteQuery(query, forceRefresh);
-    }
-  };
-
-  const handleExecute = () => handleExecuteClick(true); // Always force refresh when clicking Execute
+  const handleExecute = () => onExecuteQuery(query, true);
 
   // --- Add this handler for path blur ---
   const handlePathBlur = (rawPath: string) => {
@@ -915,6 +896,11 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
                 <Label htmlFor="limit-option" className="font-normal">
                   Limit
                 </Label>
+                {!query.constraints.limit.enabled && (
+                  <span className="text-xs text-gray-500 ml-2">
+                    (default: 50 documents)
+                  </span>
+                )}
               </div>
 
               {query.constraints.limit.enabled && (
@@ -1154,32 +1140,6 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
             );
           })()}
 
-          <AlertDialog
-            open={showNoLimitDialog}
-            onOpenChange={setShowNoLimitDialog}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>No Limit Specified</AlertDialogTitle>
-                <AlertDialogDescription>
-                  You haven&apos;t set a limit for this query. The default limit
-                  of 50 will be used. This might return a large number of
-                  documents if you keep scrolling. Do you want to continue?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    setShowNoLimitDialog(false);
-                    onExecuteQuery(query, true);
-                  }}
-                >
-                  Continue
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </div>
     </div>
