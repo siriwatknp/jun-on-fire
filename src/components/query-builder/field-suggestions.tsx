@@ -111,15 +111,24 @@ export function FieldSuggestions({
         onChange={(e) => {
           const newValue = e.target.value;
           setInputValue(newValue);
-          onChange(newValue);
           if (!open && entityType) {
             setOpen(true);
+          }
+        }}
+        onBlur={(e) => {
+          // Only call onChange on blur if the value has actually changed
+          if (e.target.value !== value) {
+            onChange(e.target.value);
           }
         }}
         onClick={() => entityType && setOpen(true)}
         onFocus={() => entityType && setOpen(true)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
+            // Call onChange on Enter if value has changed
+            if (inputValue !== value) {
+              onChange(inputValue);
+            }
             setOpen(false);
           }
           if (e.key === "Tab" || e.key === "Escape") {
