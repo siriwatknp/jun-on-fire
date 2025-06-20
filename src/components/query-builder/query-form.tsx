@@ -12,6 +12,7 @@ import {
 import { fieldMetadata } from "@/schema";
 import { projectId } from "@/lib/firebase";
 import { useQueryAction } from "./query-action-context";
+import dayjs from "dayjs";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -178,16 +179,21 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
             currentEntityType
           );
 
-          // Apply the detected type
+          // Apply the detected type and set appropriate default value
+          let defaultValue = "";
+          if (valueType === "timestamp") {
+            // Set to beginning of today in local timezone
+            defaultValue = dayjs().startOf('day').format('YYYY-MM-DDTHH:mm');
+          } else if (valueType === newClauses[index].valueType) {
+            // Keep existing value if type hasn't changed
+            defaultValue = newClauses[index].value;
+          }
+
           newClauses[index] = {
             ...newClauses[index],
             field: fieldName,
             valueType: valueType,
-            // If the type changed, update the value too for consistency
-            value:
-              valueType === newClauses[index].valueType
-                ? newClauses[index].value
-                : "",
+            value: defaultValue,
           };
 
           // Reset operator to equality if it's null with relational operator
