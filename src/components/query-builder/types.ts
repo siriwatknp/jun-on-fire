@@ -20,6 +20,17 @@ export type OrderDirection = "asc" | "desc";
 // Value Type for Where Clause
 export type ValueType = "string" | "number" | "boolean" | "null" | "timestamp";
 
+import { SerializableDocSnapshot } from "@/lib/firebase-utils";
+
+// Cached query results
+export interface CachedResults {
+  data: any[];
+  timestamp: number;
+  hasMore: boolean;
+  lastDocSnapshot?: SerializableDocSnapshot; // Store serializable snapshot data
+  aggregationResult?: any;
+}
+
 // Where Clause
 export interface WhereClause {
   field: string;
@@ -76,6 +87,9 @@ export interface QueryState {
       fields: string[];
     };
   };
+
+  // Cached results
+  cachedResults?: CachedResults;
 }
 
 // Props for the QueryForm component

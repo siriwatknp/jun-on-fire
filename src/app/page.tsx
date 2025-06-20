@@ -67,6 +67,7 @@ import {
 } from "@/components/query-builder/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryActionProvider } from "@/components/query-builder/query-action-context";
+import { serializeDocSnapshot, deserializeDocSnapshot } from "@/lib/firebase-utils";
 
 export default function Dashboard() {
   // Create a default query with a draft name
@@ -95,6 +96,9 @@ export default function Dashboard() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Cache state
+  const [isFromCache, setIsFromCache] = useState(false);
+
   // Saved queries management
   const [savedQueries, setSavedQueries] = useState<QueryState[]>([]);
   const [activeQueryId, setActiveQueryId] = useState<string | null>(null);
@@ -106,6 +110,7 @@ export default function Dashboard() {
   // View mode state for QueryResults
   type ViewMode = "table" | "json";
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+
 
   // Listen to auth state changes
   useEffect(() => {
@@ -150,170 +155,233 @@ export default function Dashboard() {
     setSavedQueries((prev) => [...prev, query]);
   }, []);
 
-  const handleExecuteQuery = useCallback((queryToExecute: QueryState) => {
-    setIsLoading(true);
-    setError(null);
+  const handleExecuteQuery = useCallback(
+    (queryToExecute: QueryState, forceRefresh = false) => {
+      setIsLoading(true);
+      setError(null);
 
-    const executeQueryAsync = async () => {
-      try {
-        // Validate path
-        if (!queryToExecute.source.path.trim()) {
-          throw new Error("Path is required");
-        }
+      const executeQueryAsync = async () => {
+        try {
+          // Validate path
+          if (!queryToExecute.source.path.trim()) {
+            throw new Error("Path is required");
+          }
 
-        // Start building the query
-        let baseQuery;
-        if (queryToExecute.source.type === "collection") {
-          baseQuery = collection(firestoreDb, queryToExecute.source.path);
-        } else {
-          baseQuery = collectionGroup(firestoreDb, queryToExecute.source.path);
-        }
+          // Check for cached results if not forcing refresh
+          if (!forceRefresh && queryToExecute.cachedResults) {
+            const cache = queryToExecute.cachedResults;
+            setPagingResults(cache.data);
+            setHasMore(cache.hasMore);
+            setLastDoc(deserializeDocSnapshot(cache.lastDocSnapshot));
+            setIsFromCache(true);
+            setIsLoading(false);
+            return;
+          }
 
-        // Use the refactored helper for constraints and limit
-        const { constraints } = buildFirestoreConstraints(queryToExecute);
+          // Reset cache state for fresh data
+          setIsFromCache(false);
 
-        // Check if we're doing an aggregation query
-        const isAggregationQuery =
-          queryToExecute.aggregation.count.enabled ||
-          queryToExecute.aggregation.sum.enabled ||
-          queryToExecute.aggregation.average.enabled;
-
-        if (isAggregationQuery) {
-          // Validate field inputs for sum and average
-          if (
-            queryToExecute.aggregation.sum.enabled &&
-            queryToExecute.aggregation.sum.fields.length === 0
-          ) {
-            throw new Error(
-              "At least one field must be specified for sum aggregation"
+          // Start building the query
+          let baseQuery;
+          if (queryToExecute.source.type === "collection") {
+            baseQuery = collection(firestoreDb, queryToExecute.source.path);
+          } else {
+            baseQuery = collectionGroup(
+              firestoreDb,
+              queryToExecute.source.path
             );
           }
 
-          if (
-            queryToExecute.aggregation.average.enabled &&
-            queryToExecute.aggregation.average.fields.length === 0
-          ) {
-            throw new Error(
-              "At least one field must be specified for average aggregation"
-            );
-          }
+          // Use the refactored helper for constraints and limit
+          const { constraints } = buildFirestoreConstraints(queryToExecute);
 
-          // Build the base query with all constraints
-          const constrainedQuery = query(baseQuery, ...constraints);
+          // Check if we're doing an aggregation query
+          const isAggregationQuery =
+            queryToExecute.aggregation.count.enabled ||
+            queryToExecute.aggregation.sum.enabled ||
+            queryToExecute.aggregation.average.enabled;
 
-          // Create an object to hold our aggregation specifications
-          const aggregateSpec: Record<
-            string,
-            ReturnType<typeof count | typeof sum | typeof average>
-          > = {};
+          if (isAggregationQuery) {
+            // Validate field inputs for sum and average
+            if (
+              queryToExecute.aggregation.sum.enabled &&
+              queryToExecute.aggregation.sum.fields.length === 0
+            ) {
+              throw new Error(
+                "At least one field must be specified for sum aggregation"
+              );
+            }
 
-          // Add the requested aggregations
-          if (queryToExecute.aggregation.count.enabled) {
-            aggregateSpec.count = count();
-          }
+            if (
+              queryToExecute.aggregation.average.enabled &&
+              queryToExecute.aggregation.average.fields.length === 0
+            ) {
+              throw new Error(
+                "At least one field must be specified for average aggregation"
+              );
+            }
 
-          // Add sum for each field
-          if (queryToExecute.aggregation.sum.enabled) {
-            queryToExecute.aggregation.sum.fields.forEach((field, index) => {
-              if (field.trim() === "") {
-                throw new Error(`Sum field ${index + 1} cannot be empty`);
-              }
-              aggregateSpec[`sum_${field}`] = sum(field);
-            });
-          }
+            // Build the base query with all constraints
+            const constrainedQuery = query(baseQuery, ...constraints);
 
-          // Add average for each field
-          if (queryToExecute.aggregation.average.enabled) {
-            queryToExecute.aggregation.average.fields.forEach(
-              (field, index) => {
+            // Create an object to hold our aggregation specifications
+            const aggregateSpec: Record<
+              string,
+              ReturnType<typeof count | typeof sum | typeof average>
+            > = {};
+
+            // Add the requested aggregations
+            if (queryToExecute.aggregation.count.enabled) {
+              aggregateSpec.count = count();
+            }
+
+            // Add sum for each field
+            if (queryToExecute.aggregation.sum.enabled) {
+              queryToExecute.aggregation.sum.fields.forEach((field, index) => {
                 if (field.trim() === "") {
-                  throw new Error(`Average field ${index + 1} cannot be empty`);
+                  throw new Error(`Sum field ${index + 1} cannot be empty`);
                 }
-                aggregateSpec[`avg_${field}`] = average(field);
-              }
+                aggregateSpec[`sum_${field}`] = sum(field);
+              });
+            }
+
+            // Add average for each field
+            if (queryToExecute.aggregation.average.enabled) {
+              queryToExecute.aggregation.average.fields.forEach(
+                (field, index) => {
+                  if (field.trim() === "") {
+                    throw new Error(
+                      `Average field ${index + 1} cannot be empty`
+                    );
+                  }
+                  aggregateSpec[`avg_${field}`] = average(field);
+                }
+              );
+            }
+
+            // Execute the aggregation query
+            const aggregateSnapshot = await getAggregateFromServer(
+              constrainedQuery,
+              aggregateSpec
             );
-          }
+            const aggregateData = aggregateSnapshot.data();
 
-          // Execute the aggregation query
-          const aggregateSnapshot = await getAggregateFromServer(
-            constrainedQuery,
-            aggregateSpec
-          );
-          const aggregateData = aggregateSnapshot.data();
+            // Format the results
+            const formattedResults: {
+              count?: number | null;
+              sum?: Record<string, number | null>;
+              average?: Record<string, number | null>;
+            } = {};
 
-          // Format the results
-          const formattedResults: {
-            count?: number | null;
-            sum?: Record<string, number | null>;
-            average?: Record<string, number | null>;
-          } = {};
+            // Add count if enabled
+            if (queryToExecute.aggregation.count.enabled) {
+              formattedResults.count = aggregateData.count;
+            }
 
-          // Add count if enabled
-          if (queryToExecute.aggregation.count.enabled) {
-            formattedResults.count = aggregateData.count;
-          }
+            // Add sum results
+            if (queryToExecute.aggregation.sum.enabled) {
+              formattedResults.sum = {};
+              queryToExecute.aggregation.sum.fields.forEach((field) => {
+                if (formattedResults.sum) {
+                  formattedResults.sum[field] = aggregateData[`sum_${field}`];
+                }
+              });
+            }
 
-          // Add sum results
-          if (queryToExecute.aggregation.sum.enabled) {
-            formattedResults.sum = {};
-            queryToExecute.aggregation.sum.fields.forEach((field) => {
-              if (formattedResults.sum) {
-                formattedResults.sum[field] = aggregateData[`sum_${field}`];
-              }
+            // Add average results
+            if (queryToExecute.aggregation.average.enabled) {
+              formattedResults.average = {};
+              queryToExecute.aggregation.average.fields.forEach((field) => {
+                if (formattedResults.average) {
+                  formattedResults.average[field] =
+                    aggregateData[`avg_${field}`];
+                }
+              });
+            }
+
+            setPagingResults([formattedResults]);
+
+            // Save aggregation results to cache
+            const updatedQuery = {
+              ...queryToExecute,
+              cachedResults: {
+                data: [formattedResults],
+                timestamp: Date.now(),
+                hasMore: false,
+                aggregationResult: formattedResults,
+              },
+            };
+            setCurrentQuery(updatedQuery);
+
+            // Save to database
+            if (queryToExecute.id) {
+              await saveQueryToDb(updatedQuery);
+              setSavedQueries((prev) =>
+                prev.map((q) => (q.id === queryToExecute.id ? updatedQuery : q))
+              );
+            }
+          } else {
+            // For non-aggregation queries, use the regular approach
+            // Build the final query
+            const { constraints, limitValue } =
+              buildFirestoreConstraints(queryToExecute);
+            const firestoreQuery = query(baseQuery, ...constraints);
+
+            // Execute the query
+            const querySnapshot = await getDocs(firestoreQuery);
+
+            // Process the results
+            const queryResults: DocumentData[] = [];
+            const newLastDoc =
+              querySnapshot.docs[querySnapshot.docs.length - 1];
+            querySnapshot.forEach((doc) => {
+              queryResults.push({
+                id: doc.id,
+                path: doc.ref.path,
+                ...doc.data(),
+              });
             });
+
+            setPagingResults(queryResults);
+            // If the result size is less than the limit, there are no more results to fetch
+            setHasMore(queryResults.length === limitValue);
+            setLastDoc(newLastDoc);
+
+            // Save regular query results to cache
+            const updatedQuery = {
+              ...queryToExecute,
+              cachedResults: {
+                data: queryResults,
+                timestamp: Date.now(),
+                hasMore: queryResults.length === limitValue,
+                lastDocSnapshot: serializeDocSnapshot(newLastDoc),
+              },
+            };
+            setCurrentQuery(updatedQuery);
+
+            // Save to database
+            if (queryToExecute.id) {
+              await saveQueryToDb(updatedQuery);
+              setSavedQueries((prev) =>
+                prev.map((q) => (q.id === queryToExecute.id ? updatedQuery : q))
+              );
+            }
           }
-
-          // Add average results
-          if (queryToExecute.aggregation.average.enabled) {
-            formattedResults.average = {};
-            queryToExecute.aggregation.average.fields.forEach((field) => {
-              if (formattedResults.average) {
-                formattedResults.average[field] = aggregateData[`avg_${field}`];
-              }
-            });
-          }
-
-          setPagingResults([formattedResults]);
-        } else {
-          // For non-aggregation queries, use the regular approach
-          // Build the final query
-          const { constraints, limitValue } =
-            buildFirestoreConstraints(queryToExecute);
-          const firestoreQuery = query(baseQuery, ...constraints);
-
-          // Execute the query
-          const querySnapshot = await getDocs(firestoreQuery);
-
-          // Process the results
-          const queryResults: DocumentData[] = [];
-          let newLastDoc = null;
-          querySnapshot.forEach((doc) => {
-            queryResults.push({
-              id: doc.id,
-              path: doc.ref.path,
-              ...doc.data(),
-            });
-            newLastDoc = doc;
-          });
-
-          setPagingResults(queryResults);
-          // If the result size is less than the limit, there are no more results to fetch
-          setHasMore(queryResults.length === limitValue);
-          setLastDoc(newLastDoc);
+        } catch (err) {
+          console.error("Error executing query:", err);
+          const errorMessage =
+            err instanceof Error ? err.message : "An error occurred";
+          setError(errorMessage);
+          toast.error(errorMessage);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (err) {
-        console.error("Error executing query:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "An error occurred";
-        setError(errorMessage);
-        toast.error(errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      };
 
-    executeQueryAsync();
-  }, []);
+      executeQueryAsync();
+    },
+    []
+  );
 
   // Load a saved query
   const loadQuery = useCallback(
@@ -324,8 +392,18 @@ export default function Dashboard() {
       setActiveQueryId(query.id);
       setIsTitleEditing(false); // Cancel any ongoing title editing
 
-      // Execute the query automatically
-      handleExecuteQuery({ ...query });
+      // Check for cached results first, otherwise execute the query
+      if (query.cachedResults) {
+        // Load cached results
+        const cache = query.cachedResults;
+        setPagingResults(cache.data);
+        setHasMore(cache.hasMore);
+        setLastDoc(deserializeDocSnapshot(cache.lastDocSnapshot));
+        setIsFromCache(true);
+      } else {
+        // Execute the query automatically if no cache
+        handleExecuteQuery({ ...query });
+      }
     },
     [handleExecuteQuery]
   );
@@ -672,10 +750,29 @@ export default function Dashboard() {
         newResults.push({ id: doc.id, path: doc.ref.path, ...doc.data() });
         newLastDoc = doc;
       });
-      setPagingResults((prev) => [...prev, ...newResults]);
+      const allResults = [...pagingResults, ...newResults];
+      setPagingResults(allResults);
       setLastDoc(newLastDoc);
       // If the result size is less than the limit, there are no more results to fetch
       setHasMore(newResults.length === limitValue);
+      
+      // Update cache with all results
+      const updatedQuery = {
+        ...currentQuery,
+        cachedResults: {
+          data: allResults,
+          timestamp: Date.now(),
+          hasMore: newResults.length === limitValue,
+          lastDocSnapshot: serializeDocSnapshot(newLastDoc),
+        },
+      };
+      setCurrentQuery(updatedQuery);
+      
+      // Save to database
+      if (currentQuery.id) {
+        await saveQueryToDb(updatedQuery);
+        setSavedQueries(prev => prev.map(q => q.id === currentQuery.id ? updatedQuery : q));
+      }
     } catch (err) {
       console.error("Error fetching next page:", err);
       toast.error("Failed to fetch more results");
@@ -1060,6 +1157,7 @@ export default function Dashboard() {
                       isLoadingMore={isLoadingMore}
                       viewMode={viewMode}
                       onViewModeChange={setViewMode}
+                      isFromCache={isFromCache}
                     />
                   </div>
                 </div>

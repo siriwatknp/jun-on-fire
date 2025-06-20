@@ -4,7 +4,7 @@ import { createContext, useContext, ReactNode } from "react";
 interface QueryActionContextValue {
   onSaveQuery: () => Promise<void>;
   onCreateQuery: (query: QueryState) => void;
-  onExecuteQuery: (query: QueryState) => void;
+  onExecuteQuery: (query: QueryState, forceRefresh?: boolean) => void;
   onFetchNextPage: () => Promise<void>;
 }
 

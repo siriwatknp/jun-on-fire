@@ -20,6 +20,7 @@ interface QueryResultsProps {
   isLoadingMore: boolean;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
+  isFromCache?: boolean;
 }
 
 export function QueryResults({
@@ -31,6 +32,7 @@ export function QueryResults({
   isLoadingMore,
   viewMode: controlledViewMode,
   onViewModeChange,
+  isFromCache = false,
 }: QueryResultsProps) {
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("table");
   const viewMode = controlledViewMode ?? internalViewMode;
@@ -88,6 +90,11 @@ export function QueryResults({
             {resultSize && (
               <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600 font-normal">
                 size: {resultSize}
+              </span>
+            )}
+            {isFromCache && (
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-700 font-normal">
+                cached
               </span>
             )}
           </div>

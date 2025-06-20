@@ -555,13 +555,15 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
     }));
   };
 
-  const handleExecuteClick = () => {
-    if (!query.constraints.limit.enabled) {
+  const handleExecuteClick = (forceRefresh = false) => {
+    if (!query.constraints.limit.enabled && !forceRefresh) {
       setShowNoLimitDialog(true);
     } else {
-      onExecuteQuery(query);
+      onExecuteQuery(query, forceRefresh);
     }
   };
+
+  const handleExecute = () => handleExecuteClick(true); // Always force refresh when clicking Execute
 
   // --- Add this handler for path blur ---
   const handlePathBlur = (rawPath: string) => {
@@ -774,6 +776,9 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
                         </Select>
                         <Input
                           placeholder="Value"
+                          {...(clause.valueType === "timestamp" && {
+                            type: "datetime-local",
+                          })}
                           value={clause.value}
                           onChange={(e) =>
                             updateWhereClause(index, "value", e.target.value)
@@ -1096,7 +1101,7 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
           <Button
             size="sm"
             variant="default"
-            onClick={handleExecuteClick}
+            onClick={handleExecute}
             disabled={isLoading}
             className="bg-black text-white hover:bg-black/90 flex items-center gap-2"
           >
@@ -1167,7 +1172,7 @@ export function QueryForm({ query, onChange, isLoading }: QueryFormProps) {
                 <AlertDialogAction
                   onClick={() => {
                     setShowNoLimitDialog(false);
-                    onExecuteQuery(query);
+                    onExecuteQuery(query, true);
                   }}
                 >
                   Continue
