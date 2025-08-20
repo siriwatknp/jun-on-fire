@@ -6,6 +6,8 @@ import { FieldMetadata } from "@/schema";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { ChevronsUpDown, ChevronsDownUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -53,7 +55,7 @@ function replaceToDateFields(data: unknown): unknown {
     for (const key in data as Record<string, unknown>) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
         result[key] = replaceToDateFields(
-          (data as Record<string, unknown>)[key]
+          (data as Record<string, unknown>)[key],
         );
       }
     }
@@ -68,6 +70,15 @@ export const JsonView = React.memo(function JsonView({
   schema,
   initialKeyField,
 }: JsonViewProps) {
+  const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(
+    new Set(),
+  );
+  const [renderKey, setRenderKey] = React.useState(0);
+
+  const getPathKey = React.useCallback((keyPath: (string | number)[]) => {
+    return keyPath.reverse().join(".");
+  }, []);
+
   const getKeyCollectionRef = React.useCallback(
     (path: (string | number)[]) => {
       if (!queryPath || !schema || path.length === 0) return null;
@@ -104,7 +115,7 @@ export const JsonView = React.memo(function JsonView({
 
       return null;
     },
-    [queryPath, schema, initialKeyField]
+    [queryPath, schema, initialKeyField],
   );
   const getValueCollectionRef = React.useCallback(
     (path: (string | number)[]) => {
@@ -146,7 +157,7 @@ export const JsonView = React.memo(function JsonView({
 
       return null;
     },
-    [queryPath, schema, initialKeyField]
+    [queryPath, schema, initialKeyField],
   );
 
   const defaultItemString: GetItemString = React.useCallback(
@@ -157,9 +168,54 @@ export const JsonView = React.memo(function JsonView({
         typeof collectionRefObj === "object"
           ? collectionRefObj.collectionRef
           : collectionRefObj;
+
+      const isExpandable = type === "Object" || type === "Array";
+      const pathKey = getPathKey([...keyPath]);
+      const isExpanded = expandedPaths.has(pathKey);
+
+      const handleToggleExpandAll = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const newExpandedPaths = new Set(expandedPaths);
+
+        if (isExpanded) {
+          // Collapse: remove this path and all child paths
+          newExpandedPaths.delete(pathKey);
+          newExpandedPaths.forEach((path) => {
+            if (path.startsWith(pathKey + ".")) {
+              newExpandedPaths.delete(path);
+            }
+          });
+        } else {
+          // Expand: add this path
+          newExpandedPaths.add(pathKey);
+        }
+
+        setExpandedPaths(newExpandedPaths);
+        setRenderKey((prev) => prev + 1);
+      };
+
       return (
-        <span className="inline-flex group">
+        <span className="inline-flex group items-center">
           {itemType} {itemString}
+          {isExpandable && (
+            <Button
+              variant="ghost"
+              size="xs"
+              className="ml-1 h-4 w-4 p-0 invisible group-hover:visible"
+              onClick={handleToggleExpandAll}
+              title={
+                isExpanded
+                  ? "Collapse all nested items"
+                  : "Expand all nested items"
+              }
+            >
+              {isExpanded ? (
+                <ChevronsDownUp className="h-3 w-3" />
+              ) : (
+                <ChevronsUpDown className="h-3 w-3" />
+              )}
+            </Button>
+          )}
           {typeof collectionRefString === "string" && (
             <CollectionRefTooltip
               className="ml-1"
@@ -181,7 +237,7 @@ export const JsonView = React.memo(function JsonView({
         </span>
       );
     },
-    [getKeyCollectionRef, queryPath]
+    [getKeyCollectionRef, queryPath, expandedPaths, getPathKey],
   );
 
   return (
@@ -266,7 +322,21 @@ export const JsonView = React.memo(function JsonView({
             </span>
           );
         }}
-        shouldExpandNodeInitially={(keyPath, data, level) => level <= 1}
+        shouldExpandNodeInitially={(keyPath, data, level) => {
+          // Check if any parent path is in expandedPaths
+          const currentPath = getPathKey([...keyPath]);
+
+          // Check if this path or any parent path is marked for expansion
+          for (const expandedPath of expandedPaths) {
+            if (currentPath.startsWith(expandedPath)) {
+              return true;
+            }
+          }
+
+          // Default behavior
+          return level <= 1;
+        }}
+        key={renderKey}
       />
     </div>
   );
