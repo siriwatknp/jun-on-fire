@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Save,
   FileText,
@@ -67,9 +68,20 @@ import {
 } from "@/components/query-builder/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryActionProvider } from "@/components/query-builder/query-action-context";
-import { serializeDocSnapshot, deserializeDocSnapshot } from "@/lib/firebase-utils";
+import {
+  serializeDocSnapshot,
+  deserializeDocSnapshot,
+} from "@/lib/firebase-utils";
+import {
+  queryStateToURLParams,
+  urlParamsToQueryState,
+  mergeWithDefaults,
+} from "@/lib/url-query-utils";
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
+  const firstSearchParams = useRef(searchParams);
+
   // Create a default query with a draft name
   const createDraftQuery = (draftNumber: number) => {
     const query = createDefaultQuery();
@@ -110,7 +122,6 @@ export default function Dashboard() {
   // View mode state for QueryResults
   type ViewMode = "table" | "json";
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-
 
   // Listen to auth state changes
   useEffect(() => {
@@ -159,6 +170,10 @@ export default function Dashboard() {
     (queryToExecute: QueryState, forceRefresh = false) => {
       setIsLoading(true);
       setError(null);
+
+      // Update URL with query parameters using native history API to avoid re-render
+      const params = queryStateToURLParams(queryToExecute);
+      window.history.replaceState(null, "", `/?${params.toString()}`);
 
       const executeQueryAsync = async () => {
         try {
@@ -392,6 +407,10 @@ export default function Dashboard() {
       setActiveQueryId(query.id);
       setIsTitleEditing(false); // Cancel any ongoing title editing
 
+      // Update URL with the loaded query's parameters
+      const params = queryStateToURLParams(query);
+      window.history.replaceState(null, "", `/?${params.toString()}`);
+
       // Check for cached results first, otherwise execute the query
       if (query.cachedResults) {
         // Load cached results
@@ -408,10 +427,75 @@ export default function Dashboard() {
     [handleExecuteQuery]
   );
 
+  // Handle URL parameters on initial mount
+  useEffect(() => {
+    const handleUrlParams = async () => {
+      const urlParams = new URLSearchParams(
+        firstSearchParams.current.toString()
+      );
+
+      if (urlParams.toString()) {
+        try {
+          const queryFromURL = urlParamsToQueryState(urlParams);
+
+          // Only process if there's a valid path
+          if (queryFromURL.source?.path) {
+            setIsInitialLoading(true);
+
+            // Create new query with URL values merged with defaults
+            const defaultQuery = createDefaultQuery();
+            const newQuery = mergeWithDefaults(queryFromURL, defaultQuery);
+
+            // Find the highest draft number from existing queries
+            const storedQueries = await getAllQueries();
+            let highestDraftNumber = 0;
+            storedQueries.forEach((query) => {
+              const match = query.title.match(/Draft Query #(\d+)/);
+              if (match && match[1]) {
+                const draftNumber = parseInt(match[1], 10);
+                if (!isNaN(draftNumber) && draftNumber > highestDraftNumber) {
+                  highestDraftNumber = draftNumber;
+                }
+              }
+            });
+
+            // Update metadata for the new query
+            newQuery.id = crypto.randomUUID();
+            newQuery.title = `Draft Query #${highestDraftNumber + 1}`;
+            newQuery.createdAt = Date.now();
+            newQuery.updatedAt = Date.now();
+
+            setCurrentQuery(newQuery);
+            setActiveQueryId(newQuery.id);
+
+            // Save the draft query to the database
+            await saveQueryToDb(newQuery);
+            setSavedQueries([...storedQueries, newQuery]);
+
+            // Execute the query automatically
+            setTimeout(() => {
+              handleExecuteQuery(newQuery);
+              setIsInitialLoading(false);
+            }, 100);
+          }
+        } catch (error) {
+          console.error("Error parsing URL parameters:", error);
+          // Silently ignore invalid URL params
+        }
+      }
+    };
+
+    handleUrlParams();
+  }, [handleExecuteQuery]);
+
   // Load saved queries from IndexedDB on component mount
   useEffect(() => {
     const loadQueries = async () => {
+      // Skip if we loaded from URL params
+      if (searchParams.toString()) return;
+
       setIsInitialLoading(true); // Set loading state to true when starting to load
+
       try {
         const storedQueries = await getAllQueries();
 
@@ -455,10 +539,10 @@ export default function Dashboard() {
     };
 
     loadQueries();
-  }, [loadQuery]);
+  }, [loadQuery, searchParams]);
 
   // Create a new query with incremented draft number and save it to the list
-  const createNewQuery = async () => {
+  const createNewQuery = useCallback(async () => {
     try {
       // Find the highest existing draft number
       let highestDraftNumber = 0;
@@ -504,7 +588,7 @@ export default function Dashboard() {
       console.error("Error creating new query:", error);
       toast.error("Failed to create new query");
     }
-  };
+  }, [savedQueries]);
 
   // Handle query form changes
   const handleQueryChange = (updatedQuery: QueryState) => {
@@ -755,7 +839,7 @@ export default function Dashboard() {
       setLastDoc(newLastDoc);
       // If the result size is less than the limit, there are no more results to fetch
       setHasMore(newResults.length === limitValue);
-      
+
       // Update cache with all results
       const updatedQuery = {
         ...currentQuery,
@@ -767,11 +851,13 @@ export default function Dashboard() {
         },
       };
       setCurrentQuery(updatedQuery);
-      
+
       // Save to database
       if (currentQuery.id) {
         await saveQueryToDb(updatedQuery);
-        setSavedQueries(prev => prev.map(q => q.id === currentQuery.id ? updatedQuery : q));
+        setSavedQueries((prev) =>
+          prev.map((q) => (q.id === currentQuery.id ? updatedQuery : q))
+        );
       }
     } catch (err) {
       console.error("Error fetching next page:", err);
@@ -779,7 +865,7 @@ export default function Dashboard() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [currentQuery, isLoadingMore, hasMore, lastDoc]);
+  }, [currentQuery, isLoadingMore, hasMore, lastDoc, pagingResults]);
 
   // Duplicate query logic
   const duplicateCurrentQuery = useCallback(() => {
