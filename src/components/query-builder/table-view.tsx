@@ -145,7 +145,7 @@ export const TableView = React.memo(function TableView({
   const { onFetchNextPage, onCreateQuery, onExecuteQuery, onSaveQuery } =
     useQueryAction();
 
-  const handleImageClick = async (url: string) => {
+  const handleImageClick = React.useCallback(async (url: string) => {
     try {
       const storageRef = getStorageRefFromUrl(url);
       const metadata = await getMetadata(storageRef);
@@ -175,9 +175,9 @@ export const TableView = React.memo(function TableView({
       toast.error("Failed to load image metadata");
       setIsImageDialogOpen(false);
     }
-  };
+  }, [setSelectedImage, setIsImageDialogOpen]);
 
-  const formatCellValue = (value: unknown, key: string): React.ReactNode => {
+  const formatCellValue = React.useCallback((value: unknown, key: string): React.ReactNode => {
     if (value === null) {
       return (
         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
@@ -290,10 +290,10 @@ export const TableView = React.memo(function TableView({
       );
     }
     return String(value);
-  };
+  }, [queryPath, handleImageClick, setSelectedObject, setIsDrawerOpen]);
 
   // Handler for double-clicking id cell
-  const handleIdDoubleClick = async (idValue: string) => {
+  const handleIdDoubleClick = React.useCallback(async (idValue: string) => {
     if (!idValue) return;
     await onSaveQuery();
     const segments = queryPath.split("/");
@@ -339,7 +339,7 @@ export const TableView = React.memo(function TableView({
     onCreateQuery(newQuery);
     onExecuteQuery(newQuery);
     toast.success(`Created and executed query for id: ${idValue}`);
-  };
+  }, [queryPath, onSaveQuery, onCreateQuery, onExecuteQuery]);
 
   const columns = React.useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     if (!results || results.length === 0) return [];
@@ -372,12 +372,7 @@ export const TableView = React.memo(function TableView({
         return {
           accessorKey: key,
           header: ({ column }: { column: Column<Record<string, unknown>> }) => (
-            <TableHead
-              className="inline-block"
-              style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
-            >
-              <DataTableColumnHeader column={column} title={key} />
-            </TableHead>
+            <DataTableColumnHeader column={column} title={key} />
           ),
           cell: ({
             row,
@@ -401,12 +396,7 @@ export const TableView = React.memo(function TableView({
       return {
         accessorKey: key,
         header: ({ column }: { column: Column<Record<string, unknown>> }) => (
-          <TableHead
-            className="inline-block"
-            style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
-          >
-            <DataTableColumnHeader column={column} title={key} />
-          </TableHead>
+          <DataTableColumnHeader column={column} title={key} />
         ),
         cell: ({
           row,
@@ -422,7 +412,7 @@ export const TableView = React.memo(function TableView({
         ),
       };
     });
-  }, [results, orderByField]);
+  }, [results, orderByField, formatCellValue, handleIdDoubleClick]);
 
   const table = useReactTable({
     data: results,
@@ -493,12 +483,23 @@ export const TableView = React.memo(function TableView({
           >
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) =>
-                  flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )
-                )}
+                {headerGroup.headers.map((header) => {
+                  const widthCh = header.column.id.length;
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className="inline-block"
+                      style={{ width: `max(${widthCh * 9}px + 1rem + 1rem, 160px)` }}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -524,12 +525,14 @@ export const TableView = React.memo(function TableView({
                   >
                     {row
                       .getVisibleCells()
-                      .map((cell) =>
-                        flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )
-                      )}
+                      .map((cell) => (
+                        <React.Fragment key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </React.Fragment>
+                      ))}
                   </TableRow>
                 );
               })
