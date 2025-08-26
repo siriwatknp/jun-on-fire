@@ -492,7 +492,7 @@ export default function Dashboard() {
   useEffect(() => {
     const loadQueries = async () => {
       // Skip if we loaded from URL params
-      if (searchParams.toString()) return;
+      if (firstSearchParams.current.toString()) return;
 
       setIsInitialLoading(true); // Set loading state to true when starting to load
 
@@ -539,11 +539,14 @@ export default function Dashboard() {
     };
 
     loadQueries();
-  }, [loadQuery, searchParams]);
+  }, [loadQuery]);
 
   // Create a new query with incremented draft number and save it to the list
   const createNewQuery = useCallback(async () => {
     try {
+      // Clear URL query parameters when creating a new query
+      window.history.replaceState(null, "", "/");
+
       // Find the highest existing draft number
       let highestDraftNumber = 0;
       savedQueries.forEach((query) => {
@@ -566,6 +569,12 @@ export default function Dashboard() {
       setCurrentQuery(newDraftQuery);
       setIsLoading(false);
       setError(null);
+      
+      // Clear previous results
+      setPagingResults([]);
+      setHasMore(false);
+      setLastDoc(null);
+      setIsFromCache(false);
 
       // Add to saved queries list and save to IndexedDB
       const updatedQueries = [...savedQueries, newDraftQuery];
