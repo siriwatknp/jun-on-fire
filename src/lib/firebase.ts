@@ -52,7 +52,7 @@ if (
   process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN &&
   typeof self !== "undefined"
 ) {
-  // @ts-expect-error ignore
+  // @ts-expect-error ignore this
   self.FIREBASE_APPCHECK_DEBUG_TOKEN =
     process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN;
 }
