@@ -12,8 +12,9 @@ let fieldMetadata = baseFieldMetadata;
 
 if (process.env.NEXT_PUBLIC_FIREBASE_ENV === "production") {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    fieldMetadata = require("../shared/schema-production").fieldMetadata;
+    fieldMetadata =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("../packages/shared/schema-production").fieldMetadata;
   } catch {}
 }
 

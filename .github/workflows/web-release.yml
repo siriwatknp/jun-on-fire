@@ -35,7 +35,7 @@ jobs:
 
       - name: Fetch files from private repo
         run: |
-          mkdir -p shared src/renderer
+          mkdir -p packages/shared apps/pos/src/renderer
           curl -H "Authorization: token ${{ secrets.PRIVATE_REPO_TOKEN }}" \
                -H "Accept: application/vnd.github.v3.raw" \
                https://api.github.com/repos/siriwatknp/scrapee/contents/packages/shared/schema-production.ts \
