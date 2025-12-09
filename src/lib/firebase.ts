@@ -1,5 +1,9 @@
 import { initializeApp, getApps } from "firebase/app";
 import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from "firebase/app-check";
+import {
   getAuth,
   signInWithCustomToken,
   signOut as firebaseSignOut,
@@ -44,12 +48,30 @@ const firebaseConfig =
 
 const projectId = firebaseConfig.projectId;
 
+if (
+  process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN &&
+  typeof self !== "undefined"
+) {
+  // @ts-expect-error ignore
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN =
+    process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN;
+}
+
 // Initialize Firebase
 const app =
   getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app, "asia-southeast1");
+
+if (process.env.NODE_ENV === "production" && typeof document !== "undefined") {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(
+      process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY || ""
+    ),
+    isTokenAutoRefreshEnabled: true, // Set to true to allow auto-refresh.
+  });
+}
 
 // Connect to emulators in development mode
 if (
